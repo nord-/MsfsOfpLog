@@ -19,38 +19,40 @@ namespace MsfsOfpLog.Services
         public event EventHandler? Connected;
         public event EventHandler? Disconnected;
         
-        // Mock flight data - simulate a realistic flight from Vienna to Graz with taxi/takeoff/landing phases
+        // Mock flight data - simulate realistic flight from LGRP (Rhodes) to ESSA (Stockholm)
+        // Based on actual flight plan waypoints
         private readonly (double lat, double lon, double fuel, double speed, double alt, double heading)[] mockFlightPath = 
         {
-            // Ground/taxi phase - low speed
-            (48.1103, 16.5697, 3020, 15, 1200, 270), // Vienna airport - taxiing
-            (48.1105, 16.5700, 3018, 25, 1200, 270), // Still taxiing
-            (48.1108, 16.5703, 3016, 35, 1200, 270), // Approaching runway
+            // Ground/taxi phase at LGRP (Rhodes/Diagoras Airport)
+            (36.400, 28.080, 8800, 15, 19, 240), // LGRP airport - taxiing
+            (36.402, 28.082, 8798, 25, 19, 240), // Still taxiing
+            (36.405, 28.085, 8796, 35, 19, 240), // Approaching runway
             
-            // Takeoff phase - increasing speed
-            (48.1110, 16.5706, 3014, 80, 1500, 270), // Takeoff roll
-            (48.1115, 16.5710, 3012, 120, 3000, 270), // Climbing out
-            (48.1120, 16.5715, 3010, 160, 8000, 270), // Continuing climb
+            // Takeoff phase
+            (36.408, 28.088, 8794, 80, 500, 240), // Takeoff roll
+            (36.412, 28.092, 8792, 120, 3000, 240), // Climbing out
+            (36.415, 28.095, 8790, 160, 8000, 240), // Continuing climb
             
-            // Cruise phase - high speed
-            (48.0000, 16.3000, 2960, 185, 35000, 270), // Cruise
-            (47.9000, 16.1000, 2900, 190, 35000, 270), // Cruise
-            (47.8000, 15.9000, 2840, 185, 35000, 270), // Cruise
-            (47.7000, 15.7000, 2780, 180, 35000, 270), // Cruise
-            (47.6000, 15.5000, 2720, 175, 35000, 270), // Cruise
-            (47.5000, 15.3000, 2660, 170, 35000, 270), // Cruise
+            // Cruise phase - following actual flight plan waypoints
+            (36.385, 27.731, 8750, 460, 38000, 010), // VANES waypoint during cruise
+            (36.468, 27.060, 8700, 465, 38000, 015), // ETERU waypoint
+            (36.487, 26.900, 8650, 470, 38000, 020), // GILOS waypoint
+            (36.533, 26.511, 8600, 475, 38000, 025), // ADESO waypoint
+            (55.638, 17.161, 8500, 480, 38000, 030), // PENOR waypoint (skipping middle for demo)
+            (57.500, 17.346, 8450, 485, 38000, 035), // ARMOD waypoint
+            (58.815, 17.884, 8400, 450, 20000, 040), // NILUG waypoint - descent started
             
-            // Descent phase - decreasing speed
-            (47.2000, 15.4000, 2630, 150, 15000, 270), // Initial descent
-            (47.1000, 15.4200, 2610, 130, 8000, 270), // Continuing descent
-            (47.0500, 15.4300, 2600, 110, 3000, 270), // Final approach
+            // Descent phase
+            (59.200, 17.900, 8380, 400, 15000, 045), // Initial descent
+            (59.400, 17.920, 8360, 350, 8000, 050), // Continuing descent
+            (59.600, 17.940, 8350, 300, 3000, 055), // Final approach
             
-            // Landing phase - low speed
-            (47.0200, 15.4380, 2598, 90, 1500, 270), // Short final
-            (47.0100, 15.4390, 2596, 70, 800, 270), // Touchdown
-            (47.0080, 15.4395, 2594, 50, 600, 270), // Rollout
-            (47.0077, 15.4396, 2592, 30, 600, 270), // Taxiing to gate
-            (47.0075, 15.4398, 2590, 15, 600, 270), // Parking
+            // Landing phase at ESSA (Stockholm/Arlanda Airport)
+            (59.652, 17.919, 8348, 150, 1000, 060), // ESSA approach
+            (59.654, 17.921, 8346, 80, 500, 060), // Touchdown
+            (59.656, 17.923, 8344, 50, 138, 060), // Rollout
+            (59.658, 17.925, 8342, 30, 138, 060), // Taxiing to gate
+            (59.660, 17.927, 8340, 15, 138, 060), // Parking
         };
         
         private int currentPositionIndex = 0;
@@ -131,11 +133,11 @@ namespace MsfsOfpLog.Services
                 Latitude = position.lat,
                 Longitude = position.lon,
                 FuelTotalQuantity = position.fuel,
-                FuelTotalCapacity = 3624, // Mock fuel capacity in kg (1200 gal * 3.02 kg/gal)
+                FuelTotalCapacity = 9600, // Mock fuel capacity in kg (realistic for A320)
                 GroundSpeed = position.speed,
                 Altitude = position.alt,
                 Heading = position.heading,
-                AircraftTitle = "Mock Aircraft - Boeing 737-800"
+                AircraftTitle = "Airbus A320neo - LGRP to ESSA"
             };
             
             // Determine flight phase based on speed and altitude

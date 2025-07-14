@@ -8,12 +8,14 @@ A .NET console application for tracking GPS fixes and fuel consumption in Micros
 - **Demo mode** for testing without MSFS running
 - **Smart GPS fix tracking** with configurable tolerance zones
 - **Intelligent flight state tracking** - distinguishes pre-flight vs post-flight taxi
+- **Automatic takeoff and landing detection** - records these key flight events
 - **Speed-based recording** - only records GPS fixes when airborne (>45 knots)
 - **Automatic monitoring stop** - stops only after aircraft has landed and is taxiing
 - **Fuel consumption monitoring** in kilograms at each GPS fix
 - **Flight plan support** for MSFS .pln files
 - **Data logging** in CSV, JSON, and summary formats
-- **Continuous position updates** every 5 seconds during monitoring
+- **Continuous position updates** every 5 seconds with fixed console display
+- **Clean monitoring interface** - current position at top, GPS fixes listed below
 - **Route string parsing** for quick GPS fix setup
 - **Manual GPS fix entry** for custom waypoints
 - **Graceful shutdown** with Ctrl+C to save flight data
@@ -102,7 +104,7 @@ The application creates log files in `Documents\MSFS OFP Log\`:
 
 Each GPS fix passage records:
 - Timestamp
-- Fix name and coordinates
+- Fix name and coordinates (including TAKEOFF and LANDING events)
 - Remaining fuel (kilograms and percentage)
 - Aircraft altitude and speed
 - Heading and ground speed

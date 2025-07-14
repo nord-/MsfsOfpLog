@@ -20,6 +20,8 @@ namespace MsfsOfpLog
         private static bool hasBeenAirborne = false; // Track if aircraft has been airborne
         private static bool isCurrentlyAirborne = false; // Track current airborne status
         private static DateTime? firstAirborneTime = null; // When aircraft first became airborne
+        private static bool takeoffRecorded = false; // Track if takeoff has been recorded
+        private static bool landingRecorded = false; // Track if landing has been recorded
         
         static async Task Main(string[] args)
         {
@@ -181,35 +183,62 @@ namespace MsfsOfpLog
         
         private static void AddSampleGpsFixes()
         {
-            // Add some sample GPS fixes for the demo flight path
+            // Add GPS fixes based on actual LGRP-ESSA flight plan waypoints
             gpsFixTracker?.AddGpsFix(new GpsFix
             {
-                Name = "VIE",
-                Latitude = 48.1103,
-                Longitude = 16.5697,
+                Name = "VANES",
+                Latitude = 36.385,
+                Longitude = 27.731,
                 ToleranceNM = 1.0
             });
             
             gpsFixTracker?.AddGpsFix(new GpsFix
             {
-                Name = "RIVER",
-                Latitude = 47.7000,
-                Longitude = 15.7000,
-                ToleranceNM = 0.5
+                Name = "ETERU",
+                Latitude = 36.468,
+                Longitude = 27.060,
+                ToleranceNM = 1.0
             });
             
             gpsFixTracker?.AddGpsFix(new GpsFix
             {
-                Name = "LOWG",
-                Latitude = 47.0077,
-                Longitude = 15.4396,
+                Name = "GILOS",
+                Latitude = 36.487,
+                Longitude = 26.900,
                 ToleranceNM = 1.0
             });
             
-            Console.WriteLine("Sample GPS fixes loaded for demo:");
-            Console.WriteLine("- VIE (Vienna): 48.1103, 16.5697");
-            Console.WriteLine("- RIVER (Waypoint): 47.7000, 15.7000");
-            Console.WriteLine("- LOWG (Graz): 47.0077, 15.4396");
+            gpsFixTracker?.AddGpsFix(new GpsFix
+            {
+                Name = "PENOR",
+                Latitude = 55.638,
+                Longitude = 17.161,
+                ToleranceNM = 1.0
+            });
+            
+            gpsFixTracker?.AddGpsFix(new GpsFix
+            {
+                Name = "ARMOD",
+                Latitude = 57.500,
+                Longitude = 17.346,
+                ToleranceNM = 1.0
+            });
+            
+            gpsFixTracker?.AddGpsFix(new GpsFix
+            {
+                Name = "NILUG",
+                Latitude = 58.815,
+                Longitude = 17.884,
+                ToleranceNM = 1.0
+            });
+            
+            Console.WriteLine("Sample GPS fixes loaded for demo (LGRP-ESSA route):");
+            Console.WriteLine("- VANES: 36.385, 27.731");
+            Console.WriteLine("- ETERU: 36.468, 27.060");
+            Console.WriteLine("- GILOS: 36.487, 26.900");
+            Console.WriteLine("- PENOR: 55.638, 17.161");
+            Console.WriteLine("- ARMOD: 57.500, 17.346");
+            Console.WriteLine("- NILUG: 58.815, 17.884");
         }
         
         private static void LoadFlightPlan()
@@ -296,54 +325,18 @@ namespace MsfsOfpLog
             hasBeenAirborne = false;
             isCurrentlyAirborne = false;
             firstAirborneTime = null;
+            takeoffRecorded = false;
+            landingRecorded = false;
             
             // Continuously display updated position every 5 seconds
             while (!cancellationTokenSource?.Token.IsCancellationRequested == true && monitoringActive)
             {
                 try
                 {
-                    // Clear the console area where we show position (move cursor up and clear lines)
                     if (currentAircraftData != null)
                     {
-                        // Update flight state tracking
-                        bool wasAirborne = isCurrentlyAirborne;
-                        isCurrentlyAirborne = currentAircraftData.GroundSpeed > 45.0;
-                        
-                        // Check if aircraft just became airborne
-                        if (!wasAirborne && isCurrentlyAirborne)
-                        {
-                            hasBeenAirborne = true;
-                            firstAirborneTime = DateTime.Now;
-                            Console.WriteLine($"\n🛫 Aircraft became airborne at {firstAirborneTime:HH:mm:ss}");
-                        }
-                        
-                        // Determine flight phase
-                        string flightPhase = "";
-                        if (!hasBeenAirborne && !isCurrentlyAirborne)
-                        {
-                            flightPhase = "TAXI (Pre-flight)";
-                        }
-                        else if (hasBeenAirborne && isCurrentlyAirborne)
-                        {
-                            flightPhase = "AIRBORNE";
-                        }
-                        else if (hasBeenAirborne && !isCurrentlyAirborne)
-                        {
-                            flightPhase = "TAXI (Post-flight)";
-                        }
-                        
-                        Console.SetCursorPosition(0, Console.CursorTop);
-                        Console.WriteLine($"Current Aircraft Position: {DateTime.Now:HH:mm:ss} [{flightPhase}]");
-                        Console.WriteLine($"  Latitude:  {currentAircraftData.Latitude:F6}°");
-                        Console.WriteLine($"  Longitude: {currentAircraftData.Longitude:F6}°");
-                        Console.WriteLine($"  Altitude:  {currentAircraftData.Altitude:F0} ft");
-                        Console.WriteLine($"  Ground Speed: {currentAircraftData.GroundSpeed:F0} kts");
-                        Console.WriteLine($"  Heading:   {currentAircraftData.Heading:F0}°");
-                        var fuelQuantityKg = currentAircraftData.FuelTotalQuantity * 3.032; // Convert gallons to kg (adjusted for accuracy)
-                        var fuelCapacityKg = currentAircraftData.FuelTotalCapacity * 3.032; // Convert gallons to kg
-                        Console.WriteLine($"  Fuel:      {fuelQuantityKg:F0} kg ({(fuelQuantityKg / fuelCapacityKg * 100):F1}%)");
-                        Console.WriteLine($"  Aircraft:  {currentAircraftData.AircraftTitle}");
-                        Console.WriteLine("────────────────────────────────────────────────────────────────");
+                        // Display the current status (this will clear and redraw everything)
+                        DisplayCurrentStatus();
                         
                         // Only stop monitoring if we've been airborne and are now slow (post-flight taxi)
                         if (hasBeenAirborne && currentAircraftData.GroundSpeed < 45.0)
@@ -355,7 +348,7 @@ namespace MsfsOfpLog
                     }
                     else
                     {
-                        Console.WriteLine("Waiting for aircraft data from MSFS...");
+                        DisplayCurrentStatus();
                     }
                     
                     if (monitoringActive)
@@ -433,7 +426,65 @@ namespace MsfsOfpLog
             // Update current aircraft title
             currentAircraftTitle = aircraftData.AircraftTitle;
             
-            // Check if we're near any GPS fixes, passing flight state
+            // Update flight state tracking in real-time
+            bool wasAirborne = isCurrentlyAirborne;
+            isCurrentlyAirborne = aircraftData.GroundSpeed > 45.0;
+            
+            // Check if aircraft just became airborne (takeoff)
+            if (!wasAirborne && isCurrentlyAirborne && !takeoffRecorded)
+            {
+                hasBeenAirborne = true;
+                firstAirborneTime = DateTime.Now;
+                takeoffRecorded = true;
+                
+                // Record takeoff event with airport information
+                var takeoffData = new GpsFixData
+                {
+                    Timestamp = DateTime.Now,
+                    FixName = "TAKEOFF LGRP", // Include departure airport
+                    Latitude = aircraftData.Latitude,
+                    Longitude = aircraftData.Longitude,
+                    FuelRemaining = aircraftData.FuelTotalQuantity * 3.032,
+                    FuelRemainingPercentage = aircraftData.FuelTotalCapacity > 0 ? 
+                        (aircraftData.FuelTotalQuantity / aircraftData.FuelTotalCapacity) * 100 : 0,
+                    GroundSpeed = aircraftData.GroundSpeed,
+                    Altitude = aircraftData.Altitude,
+                    Heading = aircraftData.Heading
+                };
+                
+                gpsFixTracker?.AddPassedFix(takeoffData);
+            }
+            
+            // Check if aircraft just landed (was airborne, now slow)
+            if (wasAirborne && !isCurrentlyAirborne && hasBeenAirborne && !landingRecorded)
+            {
+                landingRecorded = true;
+                
+                // Record landing event with airport information
+                var landingData = new GpsFixData
+                {
+                    Timestamp = DateTime.Now,
+                    FixName = "LANDING ESSA", // Include arrival airport
+                    Latitude = aircraftData.Latitude,
+                    Longitude = aircraftData.Longitude,
+                    FuelRemaining = aircraftData.FuelTotalQuantity * 3.032,
+                    FuelRemainingPercentage = aircraftData.FuelTotalCapacity > 0 ? 
+                        (aircraftData.FuelTotalQuantity / aircraftData.FuelTotalCapacity) * 100 : 0,
+                    GroundSpeed = aircraftData.GroundSpeed,
+                    Altitude = aircraftData.Altitude,
+                    Heading = aircraftData.Heading
+                };
+                
+                gpsFixTracker?.AddPassedFix(landingData);
+            }
+            
+            // If aircraft just became airborne, mark as has been airborne
+            if (!wasAirborne && isCurrentlyAirborne)
+            {
+                hasBeenAirborne = true;
+            }
+            
+            // Check if we're near any GPS fixes, passing current flight state
             gpsFixTracker?.CheckPosition(aircraftData, hasBeenAirborne);
         }
         
@@ -442,12 +493,78 @@ namespace MsfsOfpLog
             // Log the GPS fix data
             dataLogger?.LogGpsFixData(fixData);
             
-            // Display notification
-            Console.WriteLine($"\n🎯 GPS FIX PASSED: {fixData.FixName}");
-            Console.WriteLine($"   Time: {fixData.Timestamp:HH:mm:ss}");
-            Console.WriteLine($"   Fuel: {fixData.FuelRemaining:F2} kg ({fixData.FuelRemainingPercentage:F1}%)");
-            Console.WriteLine($"   Position: {fixData.Latitude:F6}, {fixData.Longitude:F6}");
+            // No need to display notification here - it will be shown in DisplayCurrentStatus()
+            // The next refresh of DisplayCurrentStatus will show the new GPS fix
+        }
+        
+        private static void DisplayCurrentStatus()
+        {
+            // Clear the console and redraw everything
+            Console.Clear();
+            
+            // Header
+            Console.WriteLine("=== MSFS OFP Log - Flight Monitoring ===");
             Console.WriteLine();
+            
+            // Current position block
+            if (currentAircraftData != null)
+            {
+                // Determine flight phase
+                string flightPhase = "";
+                if (!hasBeenAirborne && !isCurrentlyAirborne)
+                {
+                    flightPhase = "TAXI (Pre-flight)";
+                }
+                else if (hasBeenAirborne && isCurrentlyAirborne)
+                {
+                    flightPhase = "AIRBORNE";
+                }
+                else if (hasBeenAirborne && !isCurrentlyAirborne)
+                {
+                    flightPhase = "TAXI (Post-flight)";
+                }
+                
+                Console.WriteLine($"Current Aircraft Position: {DateTime.Now:HH:mm:ss} [{flightPhase}]");
+                Console.WriteLine($"  Latitude:  {currentAircraftData.Latitude:F6}°");
+                Console.WriteLine($"  Longitude: {currentAircraftData.Longitude:F6}°");
+                Console.WriteLine($"  Altitude:  {currentAircraftData.Altitude:F0} ft");
+                Console.WriteLine($"  Ground Speed: {currentAircraftData.GroundSpeed:F0} kts");
+                Console.WriteLine($"  Heading:   {currentAircraftData.Heading:F0}°");
+                var fuelQuantityKg = currentAircraftData.FuelTotalQuantity * 3.032; // Convert gallons to kg
+                var fuelCapacityKg = currentAircraftData.FuelTotalCapacity * 3.032; // Convert gallons to kg
+                Console.WriteLine($"  Fuel:      {fuelQuantityKg:F0} kg ({(fuelQuantityKg / fuelCapacityKg * 100):F1}%)");
+                Console.WriteLine($"  Aircraft:  {currentAircraftData.AircraftTitle}");
+            }
+            else
+            {
+                Console.WriteLine("Waiting for aircraft data from MSFS...");
+            }
+            
+            Console.WriteLine("────────────────────────────────────────────────────────────────");
+            
+            // GPS fixes section
+            var passedFixes = gpsFixTracker?.GetPassedFixes();
+            if (passedFixes != null && passedFixes.Count > 0)
+            {
+                Console.WriteLine($"GPS Fixes Passed ({passedFixes.Count}):");
+                for (int i = 0; i < passedFixes.Count; i++)
+                {
+                    var fix = passedFixes[i];
+                    // Highlight the most recent fix and use special icons for takeoff/landing
+                    string icon = fix.FixName.StartsWith("TAKEOFF") ? "🛫" : 
+                                 fix.FixName.StartsWith("LANDING") ? "🛬" : "🎯";
+                    string prefix = i == passedFixes.Count - 1 ? $"  {icon}*" : $"  {icon} ";
+                    Console.WriteLine($"{prefix}{fix.FixName,-12} {fix.Timestamp:HH:mm:ss} - {fix.FuelRemaining:F0} kg ({fix.FuelRemainingPercentage:F1}%) - {fix.GroundSpeed:F0} kts");
+                }
+                Console.WriteLine("    (* = most recent)");
+            }
+            else
+            {
+                Console.WriteLine("No GPS fixes passed yet.");
+            }
+            
+            Console.WriteLine("────────────────────────────────────────────────────────────────");
+            Console.WriteLine("Press Ctrl+C to stop monitoring and save flight data");
         }
     }
 }

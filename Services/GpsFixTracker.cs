@@ -80,7 +80,7 @@ namespace MsfsOfpLog.Services
                     _passedFixes.Add(fixData);
                     _passedFixNames.Add(fix.Name);
                     
-                    Console.WriteLine($"Passed GPS fix: {fixData}");
+                    Console.WriteLine($"✅ Passed GPS fix: {fixData.FixName} at {fixData.Timestamp:HH:mm:ss} - Speed: {fixData.GroundSpeed:F0} kts");
                     FixPassed?.Invoke(this, fixData);
                 }
             }
@@ -118,6 +118,14 @@ namespace MsfsOfpLog.Services
             _passedFixes.Clear();
             _passedFixNames.Clear();
             Console.WriteLine("GPS fix tracker reset");
+        }
+        
+        public void AddPassedFix(GpsFixData fixData)
+        {
+            _passedFixes.Add(fixData);
+            _passedFixNames.Add(fixData.FixName);
+            Console.WriteLine($"Added manual GPS fix: {fixData.FixName} at {fixData.Timestamp:HH:mm:ss}");
+            FixPassed?.Invoke(this, fixData);
         }
     }
 }

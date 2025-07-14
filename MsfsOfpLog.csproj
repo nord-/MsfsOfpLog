@@ -9,8 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CsvHelper" Version="30.0.1" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <!-- CSV and JSON dependencies removed - only using summary files now -->
   </ItemGroup>
 
   <ItemGroup>

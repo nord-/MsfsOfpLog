@@ -1,11 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
-using CsvHelper;
 using MsfsOfpLog.Models;
-using Newtonsoft.Json;
 
 namespace MsfsOfpLog.Services
 {
@@ -25,46 +22,8 @@ namespace MsfsOfpLog.Services
         
         public void LogGpsFixData(GpsFixData fixData)
         {
-            try
-            {
-                // Save as CSV
-                var csvFile = _currentFlightFile + ".csv";
-                var fileExists = File.Exists(csvFile);
-                
-                using (var writer = new StreamWriter(csvFile, append: true))
-                using (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))
-                {
-                    if (!fileExists)
-                    {
-                        csv.WriteHeader<GpsFixData>();
-                        csv.NextRecord();
-                    }
-                    
-                    csv.WriteRecord(fixData);
-                    csv.NextRecord();
-                }
-                
-                // Save as JSON (append to array)
-                var jsonFile = _currentFlightFile + ".json";
-                var existingData = new List<GpsFixData>();
-                
-                if (File.Exists(jsonFile))
-                {
-                    var existingJson = File.ReadAllText(jsonFile);
-                    existingData = JsonConvert.DeserializeObject<List<GpsFixData>>(existingJson) ?? new List<GpsFixData>();
-                }
-                
-                existingData.Add(fixData);
-                
-                var json = JsonConvert.SerializeObject(existingData, Formatting.Indented);
-                File.WriteAllText(jsonFile, json);
-                
-                Console.WriteLine($"Logged GPS fix data to: {csvFile}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error logging GPS fix data: {ex.Message}");
-            }
+            // GPS fix data is now only logged to the summary file
+            // Individual fix logging removed to keep only summary functionality
         }
         
         public void SaveFlightSummary(IReadOnlyList<GpsFixData> passedFixes, string aircraftTitle)
@@ -137,7 +96,7 @@ namespace MsfsOfpLog.Services
         {
             try
             {
-                var files = Directory.GetFiles(_logDirectory, "flight_*.csv")
+                var files = Directory.GetFiles(_logDirectory, "flight_*_summary.txt")
                     .Select(Path.GetFileNameWithoutExtension)
                     .Where(f => f != null)
                     .Cast<string>()
