@@ -139,6 +139,8 @@ namespace MsfsOfpLog.Services
             {
                 var files = Directory.GetFiles(_logDirectory, "flight_*.csv")
                     .Select(Path.GetFileNameWithoutExtension)
+                    .Where(f => f != null)
+                    .Cast<string>()
                     .OrderByDescending(f => f)
                     .ToList();
                 

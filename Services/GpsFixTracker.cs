@@ -43,12 +43,13 @@ namespace MsfsOfpLog.Services
             }
         }
         
-        public void CheckPosition(AircraftData aircraftData)
+        public void CheckPosition(AircraftData aircraftData, bool hasBeenAirborne = false)
         {
             // Only record GPS fixes if aircraft is moving faster than minimum speed
-            if (aircraftData.GroundSpeed < MinimumSpeedKnots)
+            // AND we're not in the initial taxi phase (before takeoff)
+            if (aircraftData.GroundSpeed < MinimumSpeedKnots && !hasBeenAirborne)
             {
-                return; // Skip GPS fix detection while taxiing or stationary
+                return; // Skip GPS fix detection during pre-flight taxi
             }
             
             foreach (var fix in _gpsFixes)

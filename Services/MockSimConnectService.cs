@@ -116,12 +116,12 @@ namespace MsfsOfpLog.Services
             // No-op for mock service
         }
         
-        private async Task SimulateDataReceived()
+        private Task SimulateDataReceived()
         {
             if (currentPositionIndex >= mockFlightPath.Length)
             {
                 Console.WriteLine("Mock SimConnect: End of simulated flight path - aircraft parked");
-                return;
+                return Task.CompletedTask;
             }
             
             var position = mockFlightPath[currentPositionIndex];
@@ -156,6 +156,8 @@ namespace MsfsOfpLog.Services
             {
                 currentPositionIndex = 0;
             }
+            
+            return Task.CompletedTask;
         }
         
         public void Disconnect()

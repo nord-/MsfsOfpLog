@@ -7,8 +7,9 @@ A .NET console application for tracking GPS fixes and fuel consumption in Micros
 - **Real-time MSFS integration** using SimConnect API with automatic connection
 - **Demo mode** for testing without MSFS running
 - **Smart GPS fix tracking** with configurable tolerance zones
+- **Intelligent flight state tracking** - distinguishes pre-flight vs post-flight taxi
 - **Speed-based recording** - only records GPS fixes when airborne (>45 knots)
-- **Automatic monitoring stop** when aircraft lands or slows below 45 knots
+- **Automatic monitoring stop** - stops only after aircraft has landed and is taxiing
 - **Fuel consumption monitoring** in kilograms at each GPS fix
 - **Flight plan support** for MSFS .pln files
 - **Data logging** in CSV, JSON, and summary formats
@@ -66,9 +67,10 @@ A .NET console application for tracking GPS fixes and fuel consumption in Micros
 
 2. **Start monitoring:**
    - Real-time position and fuel updates every 5 seconds
-   - Automatic GPS fix detection and logging (only when speed > 45 knots)
+   - Displays current flight phase (Pre-flight taxi, Airborne, Post-flight taxi)
+   - Automatic GPS fix detection and logging (only when airborne >45 knots)
    - Fuel consumption tracking in kilograms
-   - Monitoring automatically stops when aircraft slows below 45 knots
+   - Monitoring automatically stops only after aircraft has landed and is taxiing
 
 3. **Stop monitoring:**
    - Press Ctrl+C for manual graceful shutdown

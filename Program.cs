@@ -17,6 +17,9 @@ namespace MsfsOfpLog
         private static string currentAircraftTitle = "";
         private static bool useRealSimConnect = false;
         private static AircraftData? currentAircraftData;
+        private static bool hasBeenAirborne = false; // Track if aircraft has been airborne
+        private static bool isCurrentlyAirborne = false; // Track current airborne status
+        private static DateTime? firstAirborneTime = null; // When aircraft first became airborne
         
         static async Task Main(string[] args)
         {
@@ -289,6 +292,11 @@ namespace MsfsOfpLog
             
             bool monitoringActive = true;
             
+            // Reset flight state tracking
+            hasBeenAirborne = false;
+            isCurrentlyAirborne = false;
+            firstAirborneTime = null;
+            
             // Continuously display updated position every 5 seconds
             while (!cancellationTokenSource?.Token.IsCancellationRequested == true && monitoringActive)
             {
@@ -297,8 +305,35 @@ namespace MsfsOfpLog
                     // Clear the console area where we show position (move cursor up and clear lines)
                     if (currentAircraftData != null)
                     {
+                        // Update flight state tracking
+                        bool wasAirborne = isCurrentlyAirborne;
+                        isCurrentlyAirborne = currentAircraftData.GroundSpeed > 45.0;
+                        
+                        // Check if aircraft just became airborne
+                        if (!wasAirborne && isCurrentlyAirborne)
+                        {
+                            hasBeenAirborne = true;
+                            firstAirborneTime = DateTime.Now;
+                            Console.WriteLine($"\n🛫 Aircraft became airborne at {firstAirborneTime:HH:mm:ss}");
+                        }
+                        
+                        // Determine flight phase
+                        string flightPhase = "";
+                        if (!hasBeenAirborne && !isCurrentlyAirborne)
+                        {
+                            flightPhase = "TAXI (Pre-flight)";
+                        }
+                        else if (hasBeenAirborne && isCurrentlyAirborne)
+                        {
+                            flightPhase = "AIRBORNE";
+                        }
+                        else if (hasBeenAirborne && !isCurrentlyAirborne)
+                        {
+                            flightPhase = "TAXI (Post-flight)";
+                        }
+                        
                         Console.SetCursorPosition(0, Console.CursorTop);
-                        Console.WriteLine($"Current Aircraft Position: {DateTime.Now:HH:mm:ss}");
+                        Console.WriteLine($"Current Aircraft Position: {DateTime.Now:HH:mm:ss} [{flightPhase}]");
                         Console.WriteLine($"  Latitude:  {currentAircraftData.Latitude:F6}°");
                         Console.WriteLine($"  Longitude: {currentAircraftData.Longitude:F6}°");
                         Console.WriteLine($"  Altitude:  {currentAircraftData.Altitude:F0} ft");
@@ -310,11 +345,11 @@ namespace MsfsOfpLog
                         Console.WriteLine($"  Aircraft:  {currentAircraftData.AircraftTitle}");
                         Console.WriteLine("────────────────────────────────────────────────────────────────");
                         
-                        // Check if aircraft has slowed down below 45 knots (landed/taxiing)
-                        if (currentAircraftData.GroundSpeed < 45.0)
+                        // Only stop monitoring if we've been airborne and are now slow (post-flight taxi)
+                        if (hasBeenAirborne && currentAircraftData.GroundSpeed < 45.0)
                         {
-                            Console.WriteLine($"\nAircraft speed dropped below 45 knots ({currentAircraftData.GroundSpeed:F0} kts).");
-                            Console.WriteLine("Automatically stopping monitoring (aircraft likely landed or taxiing)...");
+                            Console.WriteLine($"\n🛬 Aircraft has landed and is now taxiing ({currentAircraftData.GroundSpeed:F0} kts).");
+                            Console.WriteLine("Automatically stopping monitoring (flight completed)...");
                             monitoringActive = false;
                         }
                     }
@@ -398,8 +433,8 @@ namespace MsfsOfpLog
             // Update current aircraft title
             currentAircraftTitle = aircraftData.AircraftTitle;
             
-            // Check if we're near any GPS fixes
-            gpsFixTracker?.CheckPosition(aircraftData);
+            // Check if we're near any GPS fixes, passing flight state
+            gpsFixTracker?.CheckPosition(aircraftData, hasBeenAirborne);
         }
         
         private static void OnFixPassed(object? sender, GpsFixData fixData)
