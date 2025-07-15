@@ -43,7 +43,6 @@ namespace MsfsOfpLog.Services
             public double MachNumber;
             public double OutsideAirTemperature;
             public double FuelBurnRate;
-            public double ActualBurn;
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
             public string AircraftTitle;
         }
@@ -81,7 +80,6 @@ namespace MsfsOfpLog.Services
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "MACH NUMBER", "mach", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "AMBIENT TEMPERATURE", "celsius", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "ENG FUEL FLOW GPH:1", "gallons per hour", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
-                    simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "FUEL TOTAL QUANTITY", "gallons", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED); // For actual burn calculation
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "TITLE", null, SIMCONNECT_DATATYPE.STRING256, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     
                     Console.WriteLine("✅ Data definitions added");
