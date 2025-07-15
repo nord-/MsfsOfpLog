@@ -9,7 +9,7 @@ namespace MsfsOfpLog.Services
     
     public class SystemClock : ISystemClock
     {
-        public DateTime Now => DateTime.Now;
+        public DateTime Now => DateTime.UtcNow;
     }
     
     public class TestSystemClock : ISystemClock
@@ -18,14 +18,16 @@ namespace MsfsOfpLog.Services
         
         public TestSystemClock(DateTime startTime)
         {
-            _currentTime = startTime;
+            // Ensure the start time is treated as UTC
+            _currentTime = startTime.Kind == DateTimeKind.Utc ? startTime : DateTime.SpecifyKind(startTime, DateTimeKind.Utc);
         }
         
         public DateTime Now => _currentTime;
         
         public void SetTime(DateTime time)
         {
-            _currentTime = time;
+            // Ensure the time is treated as UTC
+            _currentTime = time.Kind == DateTimeKind.Utc ? time : DateTime.SpecifyKind(time, DateTimeKind.Utc);
         }
         
         public void AddMinutes(int minutes)

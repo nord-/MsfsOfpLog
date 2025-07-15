@@ -1,4 +1,4 @@
-using System;
+using static System.Globalization.CultureInfo;
 using MsfsOfpLog.Services;
 
 namespace MsfsOfpLog.Models
@@ -43,9 +43,7 @@ namespace MsfsOfpLog.Models
         }
         
         public override string ToString()
-        {
-            return $"{Timestamp:yyyy-MM-dd HH:mm:ss} - {FixName} - Fuel: {(FuelRemaining/1000).ToString("F1", System.Globalization.CultureInfo.InvariantCulture)} t ({FuelRemainingPercentage.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}%) - Alt: {Altitude.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} ft";
-        }
+            => $"{Timestamp:yyyy-MM-dd HH:mm:ss}Z - {FixName} - Fuel: {FuelConverter.KgToTonnesString(FuelRemaining)} t ({FuelRemainingPercentage.ToString("F1", InvariantCulture)}%) - Alt: {Altitude.ToString("F0", InvariantCulture)} ft";
     }
     
     public class AircraftData

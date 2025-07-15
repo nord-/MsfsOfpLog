@@ -1,7 +1,4 @@
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
+using static System.Globalization.CultureInfo;
 using MsfsOfpLog.Models;
 using MsfsOfpLog.Services;
 
@@ -241,7 +238,7 @@ namespace MsfsOfpLog
                         // Only stop monitoring if we've been airborne and are now slow (post-flight taxi)
                         if (hasBeenAirborne && currentAircraftData.GroundSpeed < 45.0)
                         {
-                            Console.WriteLine($"\n🛬 Aircraft has landed and is now taxiing ({currentAircraftData.GroundSpeed.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} kts).");
+                            Console.WriteLine($"\n🛬 Aircraft has landed and is now taxiing ({currentAircraftData.GroundSpeed.ToString("F0", InvariantCulture)} kts).");
                             Console.WriteLine("Automatically stopping monitoring (flight completed)...");
                             monitoringActive = false;
                         }
@@ -327,12 +324,12 @@ namespace MsfsOfpLog
             if (!wasAirborne && isCurrentlyAirborne && !takeoffRecorded)
             {
                 hasBeenAirborne = true;
-                firstAirborneTime = DateTime.Now;
+                firstAirborneTime = systemClock.Now;
                 takeoffRecorded = true;
                 
                 // Record takeoff event with airport information
                 var departureAirport = currentFlightPlan?.DepartureID ?? "UNKNOWN";
-                var takeoffData = new GpsFixData(aircraftData, DateTime.Now, $"TAKEOFF {departureAirport}");
+                var takeoffData = new GpsFixData(aircraftData, systemClock.Now, $"TAKEOFF {departureAirport}");
                 
                 gpsFixTracker?.AddPassedFix(takeoffData);
             }
@@ -344,7 +341,7 @@ namespace MsfsOfpLog
                 
                 // Record landing event with airport information
                 var destinationAirport = currentFlightPlan?.DestinationID ?? "UNKNOWN";
-                var landingData = new GpsFixData(aircraftData, DateTime.Now, $"LANDING {destinationAirport}");
+                var landingData = new GpsFixData(aircraftData, systemClock.Now, $"LANDING {destinationAirport}");
                 
                 gpsFixTracker?.AddPassedFix(landingData);
             }
@@ -386,15 +383,15 @@ namespace MsfsOfpLog
                     flightPhase = "TAXI (Post-flight)";
                 }
                 
-                Console.WriteLine($"Current Aircraft Position: {DateTime.Now:HH:mm:ss} [{flightPhase}]");
-                Console.WriteLine($"  Latitude:  {currentAircraftData.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)}°");
-                Console.WriteLine($"  Longitude: {currentAircraftData.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)}°");
-                Console.WriteLine($"  Altitude:  {currentAircraftData.Altitude.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} ft");
-                Console.WriteLine($"  Ground Speed: {currentAircraftData.GroundSpeed.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} kts");
-                Console.WriteLine($"  Heading:   {currentAircraftData.Heading.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)}°");
+                Console.WriteLine($"Current Aircraft Position: {systemClock.Now:HH:mm}Z [{flightPhase}]");
+                Console.WriteLine($"  Latitude:  {currentAircraftData.Latitude.ToString("F6", InvariantCulture)}°");
+                Console.WriteLine($"  Longitude: {currentAircraftData.Longitude.ToString("F6", InvariantCulture)}°");
+                Console.WriteLine($"  Altitude:  {currentAircraftData.Altitude.ToString("F0", InvariantCulture)} ft");
+                Console.WriteLine($"  Ground Speed: {currentAircraftData.GroundSpeed.ToString("F0", InvariantCulture)} kts");
+                Console.WriteLine($"  Heading:   {currentAircraftData.Heading.ToString("F0", InvariantCulture)}°");
                 var fuelQuantityKg = FuelConverter.GallonsToKg(currentAircraftData.FuelTotalQuantity); // Convert from gallons to kg
                 var fuelCapacityKg = FuelConverter.GallonsToKg(currentAircraftData.FuelTotalCapacity); // Convert from gallons to kg
-                Console.WriteLine($"  Fuel:      {(fuelQuantityKg/1000).ToString("F1", System.Globalization.CultureInfo.InvariantCulture)} t ({(fuelQuantityKg / fuelCapacityKg * 100).ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}%)");
+                Console.WriteLine($"  Fuel:      {(fuelQuantityKg/1000).ToString("F1", InvariantCulture)} t ({(fuelQuantityKg / fuelCapacityKg * 100).ToString("F1", InvariantCulture)}%)");
                 Console.WriteLine($"  Aircraft:  {currentAircraftData.AircraftTitle}");
             }
             else
@@ -416,7 +413,7 @@ namespace MsfsOfpLog
                     string icon = fix.FixName.StartsWith("TAKEOFF") ? "🛫" : 
                                  fix.FixName.StartsWith("LANDING") ? "🛬" : "🎯";
                     string prefix = i == passedFixes.Count - 1 ? $"  {icon}*" : $"  {icon} ";
-                    Console.WriteLine($"{prefix}{fix.FixName,-12} {fix.Timestamp:HH:mm:ss} - {fix.FuelRemaining.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} kg ({fix.FuelRemainingPercentage.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}%) - {fix.GroundSpeed.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} kts");
+                    Console.WriteLine($"{prefix}{fix.FixName,-12} {fix.Timestamp:HH:mm:ss}Z - {fix.FuelRemaining.ToString("F0", InvariantCulture)} kg ({fix.FuelRemainingPercentage.ToString("F1", InvariantCulture)}%) - {fix.GroundSpeed.ToString("F0", InvariantCulture)} kts");
                 }
                 Console.WriteLine("    (* = most recent)");
             }

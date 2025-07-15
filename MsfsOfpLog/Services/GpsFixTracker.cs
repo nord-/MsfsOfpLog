@@ -71,7 +71,7 @@ namespace MsfsOfpLog.Services
                     _passedFixes.Add(fixData);
                     _passedFixNames.Add(fix.Name);
                     
-                    Console.WriteLine($"✅ Passed GPS fix: {fixData.FixName} at {fixData.Timestamp:HH:mm:ss} - Speed: {fixData.GroundSpeed:F0} kts");
+                    Console.WriteLine($"✅ Passed GPS fix: {fixData.FixName} at {fixData.Timestamp:HH:mm:ss}Z - Speed: {fixData.GroundSpeed:F0} kts");
                     FixPassed?.Invoke(this, fixData);
                 }
             }

@@ -14,7 +14,7 @@ namespace MsfsOfpLog.Tests
         public void SystemClock_Should_AdvanceTime_Correctly()
         {
             // Arrange
-            var testClock = new TestSystemClock(new DateTime(2025, 7, 15, 10, 0, 0));
+            var testClock = new TestSystemClock(new DateTime(2025, 7, 15, 10, 0, 0, DateTimeKind.Utc));
             var initialTime = testClock.Now;
             
             // Act
@@ -23,13 +23,14 @@ namespace MsfsOfpLog.Tests
             
             // Assert
             Assert.Equal(initialTime.AddMinutes(30), after30Minutes);
+            Assert.Equal(DateTimeKind.Utc, after30Minutes.Kind);
         }
         
         [Fact]
         public void GpsFixTracker_Should_DetectFixPassed_WhenAircraftAtLocation()
         {
             // Arrange
-            var testClock = new TestSystemClock(new DateTime(2025, 7, 15, 10, 0, 0));
+            var testClock = new TestSystemClock(new DateTime(2025, 7, 15, 10, 0, 0, DateTimeKind.Utc));
             var tracker = new GpsFixTracker(testClock);
             
             bool fixPassed = false;
@@ -77,7 +78,7 @@ namespace MsfsOfpLog.Tests
         public void DataLogger_Should_GenerateOFPSummary_WithComprehensiveFlightPlan()
         {
             // Arrange
-            var testClock = new TestSystemClock(new DateTime(2025, 7, 15, 10, 0, 0));
+            var testClock = new TestSystemClock(new DateTime(2025, 7, 15, 10, 0, 0, DateTimeKind.Utc));
             using var memoryStream = new MemoryStream();
             var dataLogger = new DataLogger(testClock, memoryStream);
             
@@ -117,7 +118,7 @@ namespace MsfsOfpLog.Tests
         public void FlightSimulation_Should_ProcessWaypoints_InCorrectOrder()
         {
             // Arrange
-            var testClock = new TestSystemClock(new DateTime(2025, 7, 15, 10, 0, 0));
+            var testClock = new TestSystemClock(new DateTime(2025, 7, 15, 10, 0, 0, DateTimeKind.Utc));
             var tracker = new GpsFixTracker(testClock);
             using var memoryStream = new MemoryStream();
             var dataLogger = new DataLogger(testClock, memoryStream);
@@ -645,7 +646,7 @@ namespace MsfsOfpLog.Tests
         public void FuelCalculation_Should_ConvertGallonsToKilograms_FromSimConnect()
         {
             // Arrange - SimConnect provides fuel in gallons (discovered during debugging)
-            var testClock = new TestSystemClock(new DateTime(2025, 7, 15, 10, 0, 0));
+            var testClock = new TestSystemClock(new DateTime(2025, 7, 15, 10, 0, 0, DateTimeKind.Utc));
             var tracker = new GpsFixTracker(testClock);
             using var memoryStream = new MemoryStream();
             var dataLogger = new DataLogger(testClock, memoryStream);
