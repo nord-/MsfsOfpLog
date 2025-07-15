@@ -21,6 +21,7 @@ namespace MsfsOfpLog
         private static bool takeoffRecorded = false; // Track if takeoff has been recorded
         private static bool landingRecorded = false; // Track if landing has been recorded
         private static ISystemClock systemClock = new SystemClock();
+        private static FlightPlanParser.FlightPlanInfo? currentFlightPlan = null; // Store current flight plan
         
         static async Task Main(string[] args)
         {
@@ -68,9 +69,9 @@ namespace MsfsOfpLog
             while (true)
             {
                 Console.WriteLine("\n=== MSFS OFP Log Menu ===");
-                Console.WriteLine("1. Load route string");
-                Console.WriteLine("2. Load MSFS flight plan (.pln)");
-                Console.WriteLine("3. Start monitoring");
+                Console.WriteLine("1. Load route string (starts monitoring automatically)");
+                Console.WriteLine("2. Load MSFS flight plan (.pln) (starts monitoring automatically)");
+                Console.WriteLine("3. Start monitoring (manual start)");
                 Console.WriteLine("4. Stop monitoring");
                 Console.Write("Select option: ");
                 
@@ -79,11 +80,13 @@ namespace MsfsOfpLog
                 switch (input)
                 {
                     case "1":
-                        LoadRouteString();
-                        break;
+                        await LoadRouteString();
+                        // LoadRouteString now automatically starts monitoring
+                        return;
                     case "2":
-                        LoadFlightPlan();
-                        break;
+                        await LoadFlightPlan();
+                        // LoadFlightPlan now automatically starts monitoring
+                        return;
                     case "3":
                         await StartMonitoring();
                         // StartMonitoring now runs continuously until Ctrl+C
@@ -129,7 +132,7 @@ namespace MsfsOfpLog
             }
         }
         
-        private static void LoadFlightPlan()
+        private static async Task LoadFlightPlan()
         {
             Console.WriteLine("\nLoad MSFS Flight Plan:");
             Console.WriteLine("Enter the path to your .pln file:");
@@ -154,6 +157,9 @@ namespace MsfsOfpLog
             var flightPlanInfo = FlightPlanParser.ParseFlightPlan(filePath);
             if (flightPlanInfo != null)
             {
+                // Store the flight plan for use in takeoff/landing recording
+                currentFlightPlan = flightPlanInfo;
+                
                 // Display flight plan information
                 FlightPlanParser.DisplayFlightPlanInfo(flightPlanInfo);
                 
@@ -169,6 +175,10 @@ namespace MsfsOfpLog
                 Console.WriteLine($"✅ Successfully loaded {flightPlanInfo.Waypoints.Count} waypoints from flight plan!");
                 Console.WriteLine($"   Route: {flightPlanInfo.DepartureID} → {flightPlanInfo.DestinationID}");
                 Console.WriteLine($"   Ready to monitor your flight from {flightPlanInfo.DepartureName} to {flightPlanInfo.DestinationName}");
+                
+                // Automatically start monitoring
+                Console.WriteLine("\n🚀 Starting monitoring automatically...");
+                await StartMonitoring();
             }
             else
             {
@@ -176,7 +186,7 @@ namespace MsfsOfpLog
             }
         }
         
-        private static void LoadRouteString()
+        private static async Task LoadRouteString()
         {
             Console.WriteLine("\nLoad Route String:");
             Console.WriteLine("Enter your flight route (e.g., 'LOWW DCT VIE DCT RIVER DCT LOWG'):");
@@ -186,8 +196,17 @@ namespace MsfsOfpLog
             if (!string.IsNullOrWhiteSpace(route))
             {
                 gpsFixTracker?.LoadGpsFixesFromRoute(route);
+                Console.WriteLine("✅ Route string loaded successfully!");
                 Console.WriteLine("Note: In this version, GPS coordinates need to be added manually.");
                 Console.WriteLine("Consider using navigation databases for automatic coordinate lookup.");
+                
+                // Automatically start monitoring
+                Console.WriteLine("\n🚀 Starting monitoring automatically...");
+                await StartMonitoring();
+            }
+            else
+            {
+                Console.WriteLine("❌ No route provided.");
             }
         }
         
@@ -315,10 +334,11 @@ namespace MsfsOfpLog
                 takeoffRecorded = true;
                 
                 // Record takeoff event with airport information
+                var departureAirport = currentFlightPlan?.DepartureID ?? "UNKNOWN";
                 var takeoffData = new GpsFixData
                 {
                     Timestamp = DateTime.Now,
-                    FixName = "TAKEOFF LGRP", // Include departure airport
+                    FixName = $"TAKEOFF {departureAirport}", // Use actual departure airport
                     Latitude = aircraftData.Latitude,
                     Longitude = aircraftData.Longitude,
                     FuelRemaining = aircraftData.FuelTotalQuantity, // Already in kg for mock service
@@ -343,10 +363,11 @@ namespace MsfsOfpLog
                 landingRecorded = true;
                 
                 // Record landing event with airport information
+                var destinationAirport = currentFlightPlan?.DestinationID ?? "UNKNOWN";
                 var landingData = new GpsFixData
                 {
                     Timestamp = DateTime.Now,
-                    FixName = "LANDING ESSA", // Include arrival airport
+                    FixName = $"LANDING {destinationAirport}", // Use actual destination airport
                     Latitude = aircraftData.Latitude,
                     Longitude = aircraftData.Longitude,
                     FuelRemaining = aircraftData.FuelTotalQuantity, // Already in kg for mock service
