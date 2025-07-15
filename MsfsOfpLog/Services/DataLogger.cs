@@ -12,24 +12,26 @@ namespace MsfsOfpLog.Services
         private readonly string _logDirectory;
         private readonly string _currentFlightFile;
         private readonly ISystemClock _systemClock;
+        private readonly Stream? _outputStream;
         
-        public DataLogger(ISystemClock? systemClock = null)
+        public DataLogger(ISystemClock? systemClock = null, Stream? outputStream = null)
         {
             _systemClock = systemClock ?? new SystemClock();
+            _outputStream = outputStream;
             
-            // Use current directory for testing if in test mode
-            if (systemClock is TestSystemClock)
+            if (_outputStream == null)
             {
-                _logDirectory = Directory.GetCurrentDirectory();
+                _logDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "MSFS OFP Log");
+                Directory.CreateDirectory(_logDirectory);
+                
+                var timestamp = _systemClock.Now.ToString("yyyyMMdd_HHmmss");
+                _currentFlightFile = Path.Combine(_logDirectory, $"flight_{timestamp}");
             }
             else
             {
-                _logDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "MSFS OFP Log");
+                _logDirectory = string.Empty;
+                _currentFlightFile = string.Empty;
             }
-            Directory.CreateDirectory(_logDirectory);
-            
-            var timestamp = _systemClock.Now.ToString("yyyyMMdd_HHmmss");
-            _currentFlightFile = Path.Combine(_logDirectory, $"flight_{timestamp}");
         }
         
         public void LogGpsFixData(GpsFixData fixData)
@@ -42,9 +44,21 @@ namespace MsfsOfpLog.Services
         {
             try
             {
-                var summaryFile = _currentFlightFile + "_summary.txt";
+                Stream stream;
+                bool shouldDisposeStream = false;
                 
-                using (var writer = new StreamWriter(summaryFile))
+                if (_outputStream != null)
+                {
+                    stream = _outputStream;
+                }
+                else
+                {
+                    var summaryFile = _currentFlightFile + "_summary.txt";
+                    stream = new FileStream(summaryFile, FileMode.Create, FileAccess.Write);
+                    shouldDisposeStream = true;
+                }
+                
+                using (var writer = new StreamWriter(stream, leaveOpen: !shouldDisposeStream))
                 {
                     // Extract departure and destination from first and last fixes
                     var departureCode = "LGRP";
@@ -276,7 +290,12 @@ namespace MsfsOfpLog.Services
                     }
                 }
                 
-                Console.WriteLine($"Flight summary saved to: {summaryFile}");
+                if (shouldDisposeStream)
+                {
+                    stream.Dispose();
+                    var summaryFile = _currentFlightFile + "_summary.txt";
+                    Console.WriteLine($"Flight summary saved to: {summaryFile}");
+                }
             }
             catch (Exception ex)
             {
@@ -310,6 +329,11 @@ namespace MsfsOfpLog.Services
         {
             try
             {
+                if (string.IsNullOrEmpty(_logDirectory))
+                {
+                    return new List<string>();
+                }
+                
                 var files = Directory.GetFiles(_logDirectory, "flight_*_summary.txt")
                     .Select(Path.GetFileNameWithoutExtension)
                     .Where(f => f != null)
