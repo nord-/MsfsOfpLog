@@ -10,12 +10,14 @@ namespace MsfsOfpLog.Services
         private readonly List<GpsFix> _gpsFixes;
         private readonly List<GpsFixData> _passedFixes;
         private readonly HashSet<string> _passedFixNames;
+        private readonly ISystemClock _systemClock;
         private const double MinimumSpeedKnots = 45.0; // Minimum speed to record GPS fixes
         
         public event EventHandler<GpsFixData>? FixPassed;
         
-        public GpsFixTracker()
+        public GpsFixTracker(ISystemClock? systemClock = null)
         {
+            _systemClock = systemClock ?? new SystemClock();
             _gpsFixes = new List<GpsFix>();
             _passedFixes = new List<GpsFixData>();
             _passedFixNames = new HashSet<string>();
@@ -66,7 +68,7 @@ namespace MsfsOfpLog.Services
                 {
                     var fixData = new GpsFixData
                     {
-                        Timestamp = DateTime.Now,
+                        Timestamp = _systemClock.Now,
                         FixName = fix.Name,
                         Latitude = aircraftData.Latitude,
                         Longitude = aircraftData.Longitude,

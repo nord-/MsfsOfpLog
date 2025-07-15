@@ -11,13 +11,24 @@ namespace MsfsOfpLog.Services
     {
         private readonly string _logDirectory;
         private readonly string _currentFlightFile;
+        private readonly ISystemClock _systemClock;
         
-        public DataLogger()
+        public DataLogger(ISystemClock? systemClock = null)
         {
-            _logDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "MSFS OFP Log");
+            _systemClock = systemClock ?? new SystemClock();
+            
+            // Use current directory for testing if in test mode
+            if (systemClock is TestSystemClock)
+            {
+                _logDirectory = Directory.GetCurrentDirectory();
+            }
+            else
+            {
+                _logDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "MSFS OFP Log");
+            }
             Directory.CreateDirectory(_logDirectory);
             
-            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            var timestamp = _systemClock.Now.ToString("yyyyMMdd_HHmmss");
             _currentFlightFile = Path.Combine(_logDirectory, $"flight_{timestamp}");
         }
         
@@ -60,10 +71,10 @@ namespace MsfsOfpLog.Services
                     }
                     
                     // Header in OFP format
-                    var headerDate = DateTime.Now.ToString("ddMMMyyyy", InvariantCulture).ToUpper();
+                    var headerDate = _systemClock.Now.ToString("ddMMMyyyy", InvariantCulture).ToUpper();
                     writer.WriteLine($"{headerDate} {departureCode}-{destinationCode}");
                     writer.WriteLine($"OFP 1 {departureFullName}-{destinationFullName}");
-                    writer.WriteLine($"Generated: {DateTime.Now.ToString("yyyy-MM-dd HHmm", InvariantCulture)}Z");
+                    writer.WriteLine($"Generated: {_systemClock.Now.ToString("yyyy-MM-dd HHmm", InvariantCulture)}Z");
                     writer.WriteLine($"Aircraft: {aircraftTitle}");
                     writer.WriteLine();
                     

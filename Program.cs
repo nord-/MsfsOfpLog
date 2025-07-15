@@ -9,19 +9,18 @@ namespace MsfsOfpLog
 {
     class Program
     {
-        private static MockSimConnectService? mockSimConnectService;
         private static RealSimConnectService? realSimConnectService;
         private static GpsFixTracker? gpsFixTracker;
         private static DataLogger? dataLogger;
         private static CancellationTokenSource? cancellationTokenSource;
         private static string currentAircraftTitle = "";
-        private static bool useRealSimConnect = false;
         private static AircraftData? currentAircraftData;
         private static bool hasBeenAirborne = false; // Track if aircraft has been airborne
         private static bool isCurrentlyAirborne = false; // Track current airborne status
         private static DateTime? firstAirborneTime = null; // When aircraft first became airborne
         private static bool takeoffRecorded = false; // Track if takeoff has been recorded
         private static bool landingRecorded = false; // Track if landing has been recorded
+        private static ISystemClock systemClock = new SystemClock();
         
         static async Task Main(string[] args)
         {
@@ -37,50 +36,22 @@ namespace MsfsOfpLog
                 cancellationTokenSource?.Cancel();
             };
             
-            // Check for test mode command line argument
-            bool testMode = args.Length > 0 && args[0] == "-test";
-            
-            if (testMode)
-            {
-                Console.WriteLine("🎮 Running in TEST MODE with simulated data");
-                useRealSimConnect = false;
-            }
-            else
-            {
-                Console.WriteLine("🚀 Using REAL MSFS SimConnect");
-                Console.WriteLine("Make sure MSFS is running and you're in a flight!");
-                useRealSimConnect = true;
-            }
+            Console.WriteLine("🚀 Using REAL MSFS SimConnect");
+            Console.WriteLine("Make sure MSFS is running and you're in a flight!");
             Console.WriteLine();
             
             // Initialize services
-            if (useRealSimConnect)
-            {
-                realSimConnectService = new RealSimConnectService();
-                realSimConnectService.Connected += OnSimConnectConnected;
-                realSimConnectService.Disconnected += OnSimConnectDisconnected;
-                realSimConnectService.DataReceived += OnDataReceived;
-            }
-            else
-            {
-                mockSimConnectService = new MockSimConnectService();
-                mockSimConnectService.Connected += OnSimConnectConnected;
-                mockSimConnectService.Disconnected += OnSimConnectDisconnected;
-                mockSimConnectService.DataReceived += OnDataReceived;
-            }
+            realSimConnectService = new RealSimConnectService();
+            realSimConnectService.Connected += OnSimConnectConnected;
+            realSimConnectService.Disconnected += OnSimConnectDisconnected;
+            realSimConnectService.DataReceived += OnDataReceived;
             
-            gpsFixTracker = new GpsFixTracker();
-            dataLogger = new DataLogger();
+            gpsFixTracker = new GpsFixTracker(systemClock);
+            dataLogger = new DataLogger(systemClock);
             cancellationTokenSource = new CancellationTokenSource();
             
             // Set up event handlers
             gpsFixTracker.FixPassed += OnFixPassed;
-            
-            // Add some sample GPS fixes for demo (only in demo mode)
-            if (!useRealSimConnect)
-            {
-                AddSampleGpsFixes();
-            }
             
             // Auto-connect on startup
             await ConnectToMsfs();
@@ -126,119 +97,33 @@ namespace MsfsOfpLog
         
         private static async Task ConnectToMsfs()
         {
-            if (useRealSimConnect)
+            Console.WriteLine("Connecting to MSFS...");
+            Console.WriteLine("Make sure MSFS is running and you're in a flight (not in the main menu).");
+            
+            if (realSimConnectService?.Connect() == true)
             {
-                Console.WriteLine("Connecting to MSFS...");
-                Console.WriteLine("Make sure MSFS is running and you're in a flight (not in the main menu).");
+                Console.WriteLine("Connection initiated. Waiting for MSFS response...");
                 
-                if (realSimConnectService?.Connect() == true)
+                // Give it some time to connect
+                await Task.Delay(2000);
+                
+                // Start a background task to process SimConnect messages
+                _ = Task.Run(async () =>
                 {
-                    Console.WriteLine("Connection initiated. Waiting for MSFS response...");
-                    
-                    // Give it some time to connect
-                    await Task.Delay(2000);
-                    
-                    // Start a background task to process SimConnect messages
-                    _ = Task.Run(async () =>
+                    while (!cancellationTokenSource?.Token.IsCancellationRequested == true)
                     {
-                        while (!cancellationTokenSource?.Token.IsCancellationRequested == true)
-                        {
-                            realSimConnectService?.ReceiveMessage();
-                            await Task.Delay(100);
-                        }
-                    });
-                }
-                else
-                {
-                    Console.WriteLine("❌ Failed to connect to MSFS. Please ensure:");
-                    Console.WriteLine("   1. MSFS is running");
-                    Console.WriteLine("   2. You are in a flight (not in the main menu)");
-                    Console.WriteLine("   3. SimConnect is enabled in MSFS settings");
-                }
+                        realSimConnectService?.ReceiveMessage();
+                        await Task.Delay(100);
+                    }
+                });
             }
             else
             {
-                Console.WriteLine("Connecting to MSFS (Demo Mode)...");
-                
-                if (mockSimConnectService?.Connect() == true)
-                {
-                    Console.WriteLine("Demo connection successful!");
-                    
-                    // Start a background task to process messages
-                    _ = Task.Run(async () =>
-                    {
-                        while (!cancellationTokenSource?.Token.IsCancellationRequested == true)
-                        {
-                            mockSimConnectService?.ReceiveMessage();
-                            await Task.Delay(100);
-                        }
-                    });
-                }
-                else
-                {
-                    Console.WriteLine("Demo connection failed.");
-                }
+                Console.WriteLine("❌ Failed to connect to MSFS. Please ensure:");
+                Console.WriteLine("   1. MSFS is running");
+                Console.WriteLine("   2. You are in a flight (not in the main menu)");
+                Console.WriteLine("   3. SimConnect is enabled in MSFS settings");
             }
-        }
-        
-        private static void AddSampleGpsFixes()
-        {
-            // Add GPS fixes based on actual LGRP-ESSA flight plan waypoints
-            gpsFixTracker?.AddGpsFix(new GpsFix
-            {
-                Name = "VANES",
-                Latitude = 36.385,
-                Longitude = 27.731,
-                ToleranceNM = 1.0
-            });
-            
-            gpsFixTracker?.AddGpsFix(new GpsFix
-            {
-                Name = "ETERU",
-                Latitude = 36.468,
-                Longitude = 27.060,
-                ToleranceNM = 1.0
-            });
-            
-            gpsFixTracker?.AddGpsFix(new GpsFix
-            {
-                Name = "GILOS",
-                Latitude = 36.487,
-                Longitude = 26.900,
-                ToleranceNM = 1.0
-            });
-            
-            gpsFixTracker?.AddGpsFix(new GpsFix
-            {
-                Name = "PENOR",
-                Latitude = 55.638,
-                Longitude = 17.161,
-                ToleranceNM = 1.0
-            });
-            
-            gpsFixTracker?.AddGpsFix(new GpsFix
-            {
-                Name = "ARMOD",
-                Latitude = 57.500,
-                Longitude = 17.346,
-                ToleranceNM = 1.0
-            });
-            
-            gpsFixTracker?.AddGpsFix(new GpsFix
-            {
-                Name = "NILUG",
-                Latitude = 58.815,
-                Longitude = 17.884,
-                ToleranceNM = 1.0
-            });
-            
-            Console.WriteLine("Sample GPS fixes loaded for demo (LGRP-ESSA route):");
-            Console.WriteLine("- VANES: 36.385, 27.731");
-            Console.WriteLine("- ETERU: 36.468, 27.060");
-            Console.WriteLine("- GILOS: 36.487, 26.900");
-            Console.WriteLine("- PENOR: 55.638, 17.161");
-            Console.WriteLine("- ARMOD: 57.500, 17.346");
-            Console.WriteLine("- NILUG: 58.815, 17.884");
         }
         
         private static void LoadFlightPlan()
@@ -307,14 +192,7 @@ namespace MsfsOfpLog
             Console.WriteLine("Position will be updated every 5 seconds. Press Ctrl+C to stop monitoring.");
             Console.WriteLine("Monitoring will automatically stop when aircraft speed drops below 45 knots.\n");
             
-            if (useRealSimConnect)
-            {
-                realSimConnectService?.StartDataRequest();
-            }
-            else
-            {
-                mockSimConnectService?.StartDataRequest();
-            }
+            realSimConnectService?.StartDataRequest();
             
             // Wait a moment for data to be received
             await Task.Delay(500);
@@ -395,14 +273,7 @@ namespace MsfsOfpLog
             cancellationTokenSource?.Cancel();
             
             // Disconnect from MSFS
-            if (useRealSimConnect)
-            {
-                realSimConnectService?.Disconnect();
-            }
-            else
-            {
-                mockSimConnectService?.Disconnect();
-            }
+            realSimConnectService?.Disconnect();
             
             Console.WriteLine("Goodbye!");
             await Task.Delay(1000);
