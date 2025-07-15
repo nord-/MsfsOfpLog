@@ -11,6 +11,7 @@ namespace MsfsOfpLog.Services
         private SimConnect? simConnect;
         private readonly object simConnectLock = new object();
         private bool isConnected = false;
+        private double? initialFuelAmount = null; // Track initial fuel for actual burn calculation
         
         public event EventHandler<AircraftData>? DataReceived;
         public event EventHandler? Connected;
@@ -38,6 +39,11 @@ namespace MsfsOfpLog.Services
             public double GroundSpeed;
             public double Altitude;
             public double Heading;
+            public double TrueAirspeed;
+            public double MachNumber;
+            public double OutsideAirTemperature;
+            public double FuelBurnRate;
+            public double ActualBurn;
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
             public string AircraftTitle;
         }
@@ -71,6 +77,11 @@ namespace MsfsOfpLog.Services
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "GROUND VELOCITY", "knots", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "INDICATED ALTITUDE", "feet", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "HEADING INDICATOR", "degrees", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                    simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "AIRSPEED TRUE", "knots", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                    simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "MACH NUMBER", "mach", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                    simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "AMBIENT TEMPERATURE", "celsius", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                    simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "ENG FUEL FLOW GPH:1", "gallons per hour", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                    simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "FUEL TOTAL QUANTITY", "gallons", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED); // For actual burn calculation
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "TITLE", null, SIMCONNECT_DATATYPE.STRING256, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     
                     Console.WriteLine("✅ Data definitions added");
@@ -216,6 +227,15 @@ namespace MsfsOfpLog.Services
             {
                 var aircraftData = (AircraftDataStruct)data.dwData[0];
                 
+                // Set initial fuel amount on first data reception
+                if (!initialFuelAmount.HasValue)
+                {
+                    initialFuelAmount = aircraftData.FuelTotalQuantity;
+                }
+                
+                // Calculate actual burn
+                var actualBurn = initialFuelAmount.HasValue ? (initialFuelAmount.Value - aircraftData.FuelTotalQuantity) * 3.032 : 0;
+                
                 var dataObj = new AircraftData
                 {
                     Latitude = aircraftData.Latitude,
@@ -225,6 +245,11 @@ namespace MsfsOfpLog.Services
                     GroundSpeed = aircraftData.GroundSpeed,
                     Altitude = aircraftData.Altitude,
                     Heading = aircraftData.Heading,
+                    TrueAirspeed = aircraftData.TrueAirspeed,
+                    MachNumber = aircraftData.MachNumber,
+                    OutsideAirTemperature = aircraftData.OutsideAirTemperature,
+                    FuelBurnRate = aircraftData.FuelBurnRate * 3.032, // Convert from GPH to kg/hr
+                    ActualBurn = actualBurn,
                     AircraftTitle = aircraftData.AircraftTitle
                 };
                 

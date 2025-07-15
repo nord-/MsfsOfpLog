@@ -56,6 +56,7 @@ namespace MsfsOfpLog.Services
         };
         
         private int currentPositionIndex = 0;
+        private readonly double initialFuelAmount = 8800; // Initial fuel in kg
         
         public bool Connect()
         {
@@ -128,6 +129,26 @@ namespace MsfsOfpLog.Services
             
             var position = mockFlightPath[currentPositionIndex];
             
+            // Calculate realistic OAT based on altitude (standard atmosphere)
+            double oat = 15.0 - (position.alt / 1000.0 * 2.0); // Roughly 2°C per 1000 ft
+            
+            // Calculate realistic Mach number based on speed and altitude
+            double tas = position.speed; // For simplicity, assume TAS ≈ GS at low speeds
+            if (position.alt > 10000)
+            {
+                tas = position.speed * 1.15; // Rough TAS adjustment for altitude
+            }
+            double mach = tas / 661.5; // Speed of sound at sea level in knots
+            
+            // Calculate fuel burn rate based on phase
+            double fuelBurnRate = position.speed < 45 ? 500 : // Ground/taxi
+                                position.speed < 100 ? 1800 : // Takeoff/landing
+                                position.alt < 10000 ? 2200 : // Climb/descent
+                                1600; // Cruise (kg/hr)
+            
+            // Calculate actual burn (cumulative fuel consumed since start)
+            double actualBurn = initialFuelAmount - position.fuel;
+            
             var aircraftData = new AircraftData
             {
                 Latitude = position.lat,
@@ -137,6 +158,11 @@ namespace MsfsOfpLog.Services
                 GroundSpeed = position.speed,
                 Altitude = position.alt,
                 Heading = position.heading,
+                TrueAirspeed = tas,
+                MachNumber = mach,
+                OutsideAirTemperature = oat,
+                FuelBurnRate = fuelBurnRate,
+                ActualBurn = actualBurn,
                 AircraftTitle = "Airbus A320neo - LGRP to ESSA"
             };
             
@@ -146,8 +172,8 @@ namespace MsfsOfpLog.Services
                           position.alt < 10000 ? "CLIMB/DESCENT" : "CRUISE";
             
             Console.WriteLine($"Mock SimConnect: Position {currentPositionIndex + 1}/{mockFlightPath.Length} [{phase}] - " +
-                            $"Lat: {position.lat:F4}, Lon: {position.lon:F4}, Speed: {position.speed:F0} kts, " +
-                            $"Alt: {position.alt:F0} ft, Fuel: {position.fuel:F0} kg");
+                            $"Lat: {position.lat.ToString("F4", System.Globalization.CultureInfo.InvariantCulture)}, Lon: {position.lon.ToString("F4", System.Globalization.CultureInfo.InvariantCulture)}, Speed: {position.speed.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} kts, " +
+                            $"Alt: {position.alt.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} ft, Fuel: {position.fuel.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} kg, TAS: {tas.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)}, Mach: {mach.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}, OAT: {oat.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)}°C");
             
             DataReceived?.Invoke(this, aircraftData);
             

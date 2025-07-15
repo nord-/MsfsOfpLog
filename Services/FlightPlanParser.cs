@@ -179,7 +179,7 @@ namespace MsfsOfpLog.Services
                     // Convert to decimal degrees
                     var decimalDegrees = degrees + (minutes / 60.0) + (seconds / 3600.0);
                     
-                    Console.WriteLine($"Successfully parsed: {degrees}° {minutes}' {seconds}\" = {decimalDegrees:F6}");
+                    Console.WriteLine($"Successfully parsed: {degrees}° {minutes}' {seconds}\" = {decimalDegrees.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)}");
                     
                     return isNegative ? -decimalDegrees : decimalDegrees;
                 }
@@ -214,7 +214,7 @@ namespace MsfsOfpLog.Services
             Console.WriteLine($"   From: {info.DepartureID} ({info.DepartureName})");
             Console.WriteLine($"   To: {info.DestinationID} ({info.DestinationName})");
             Console.WriteLine($"   Type: {info.FlightPlanType} - {info.RouteType}");
-            Console.WriteLine($"   Cruising Altitude: {info.CruisingAltitude:F0} ft");
+            Console.WriteLine($"   Cruising Altitude: {info.CruisingAltitude.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} ft");
             Console.WriteLine($"   Waypoints: {info.Waypoints.Count}");
             Console.WriteLine();
             
@@ -222,7 +222,7 @@ namespace MsfsOfpLog.Services
             for (int i = 0; i < info.Waypoints.Count; i++)
             {
                 var wp = info.Waypoints[i];
-                Console.WriteLine($"   {i + 1:D2}. {wp.Name} - {wp.Latitude:F6}, {wp.Longitude:F6} (±{wp.ToleranceNM:F1} NM)");
+                Console.WriteLine($"   {i + 1:D2}. {wp.Name} - {wp.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)}, {wp.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)} (±{wp.ToleranceNM.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)} NM)");
             }
             Console.WriteLine();
         }

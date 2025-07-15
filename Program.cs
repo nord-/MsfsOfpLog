@@ -341,7 +341,7 @@ namespace MsfsOfpLog
                         // Only stop monitoring if we've been airborne and are now slow (post-flight taxi)
                         if (hasBeenAirborne && currentAircraftData.GroundSpeed < 45.0)
                         {
-                            Console.WriteLine($"\n🛬 Aircraft has landed and is now taxiing ({currentAircraftData.GroundSpeed:F0} kts).");
+                            Console.WriteLine($"\n🛬 Aircraft has landed and is now taxiing ({currentAircraftData.GroundSpeed.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} kts).");
                             Console.WriteLine("Automatically stopping monitoring (flight completed)...");
                             monitoringActive = false;
                         }
@@ -444,12 +444,17 @@ namespace MsfsOfpLog
                     FixName = "TAKEOFF LGRP", // Include departure airport
                     Latitude = aircraftData.Latitude,
                     Longitude = aircraftData.Longitude,
-                    FuelRemaining = aircraftData.FuelTotalQuantity * 3.032,
+                    FuelRemaining = aircraftData.FuelTotalQuantity, // Already in kg for mock service
                     FuelRemainingPercentage = aircraftData.FuelTotalCapacity > 0 ? 
                         (aircraftData.FuelTotalQuantity / aircraftData.FuelTotalCapacity) * 100 : 0,
                     GroundSpeed = aircraftData.GroundSpeed,
                     Altitude = aircraftData.Altitude,
-                    Heading = aircraftData.Heading
+                    Heading = aircraftData.Heading,
+                    TrueAirspeed = aircraftData.TrueAirspeed,
+                    MachNumber = aircraftData.MachNumber,
+                    OutsideAirTemperature = aircraftData.OutsideAirTemperature,
+                    FuelBurnRate = aircraftData.FuelBurnRate,
+                    ActualBurn = aircraftData.ActualBurn
                 };
                 
                 gpsFixTracker?.AddPassedFix(takeoffData);
@@ -467,12 +472,17 @@ namespace MsfsOfpLog
                     FixName = "LANDING ESSA", // Include arrival airport
                     Latitude = aircraftData.Latitude,
                     Longitude = aircraftData.Longitude,
-                    FuelRemaining = aircraftData.FuelTotalQuantity * 3.032,
+                    FuelRemaining = aircraftData.FuelTotalQuantity, // Already in kg for mock service
                     FuelRemainingPercentage = aircraftData.FuelTotalCapacity > 0 ? 
                         (aircraftData.FuelTotalQuantity / aircraftData.FuelTotalCapacity) * 100 : 0,
                     GroundSpeed = aircraftData.GroundSpeed,
                     Altitude = aircraftData.Altitude,
-                    Heading = aircraftData.Heading
+                    Heading = aircraftData.Heading,
+                    TrueAirspeed = aircraftData.TrueAirspeed,
+                    MachNumber = aircraftData.MachNumber,
+                    OutsideAirTemperature = aircraftData.OutsideAirTemperature,
+                    FuelBurnRate = aircraftData.FuelBurnRate,
+                    ActualBurn = aircraftData.ActualBurn
                 };
                 
                 gpsFixTracker?.AddPassedFix(landingData);
@@ -525,14 +535,14 @@ namespace MsfsOfpLog
                 }
                 
                 Console.WriteLine($"Current Aircraft Position: {DateTime.Now:HH:mm:ss} [{flightPhase}]");
-                Console.WriteLine($"  Latitude:  {currentAircraftData.Latitude:F6}°");
-                Console.WriteLine($"  Longitude: {currentAircraftData.Longitude:F6}°");
-                Console.WriteLine($"  Altitude:  {currentAircraftData.Altitude:F0} ft");
-                Console.WriteLine($"  Ground Speed: {currentAircraftData.GroundSpeed:F0} kts");
-                Console.WriteLine($"  Heading:   {currentAircraftData.Heading:F0}°");
-                var fuelQuantityKg = currentAircraftData.FuelTotalQuantity * 3.032; // Convert gallons to kg
+                Console.WriteLine($"  Latitude:  {currentAircraftData.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)}°");
+                Console.WriteLine($"  Longitude: {currentAircraftData.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)}°");
+                Console.WriteLine($"  Altitude:  {currentAircraftData.Altitude.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} ft");
+                Console.WriteLine($"  Ground Speed: {currentAircraftData.GroundSpeed.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} kts");
+                Console.WriteLine($"  Heading:   {currentAircraftData.Heading.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)}°");
+                var fuelQuantityKg = currentAircraftData.FuelTotalQuantity; // Already in kg for mock service
                 var fuelCapacityKg = currentAircraftData.FuelTotalCapacity * 3.032; // Convert gallons to kg
-                Console.WriteLine($"  Fuel:      {fuelQuantityKg:F0} kg ({(fuelQuantityKg / fuelCapacityKg * 100):F1}%)");
+                Console.WriteLine($"  Fuel:      {(fuelQuantityKg/1000).ToString("F1", System.Globalization.CultureInfo.InvariantCulture)} t ({(fuelQuantityKg / fuelCapacityKg * 100).ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}%)");
                 Console.WriteLine($"  Aircraft:  {currentAircraftData.AircraftTitle}");
             }
             else
@@ -554,7 +564,7 @@ namespace MsfsOfpLog
                     string icon = fix.FixName.StartsWith("TAKEOFF") ? "🛫" : 
                                  fix.FixName.StartsWith("LANDING") ? "🛬" : "🎯";
                     string prefix = i == passedFixes.Count - 1 ? $"  {icon}*" : $"  {icon} ";
-                    Console.WriteLine($"{prefix}{fix.FixName,-12} {fix.Timestamp:HH:mm:ss} - {fix.FuelRemaining:F0} kg ({fix.FuelRemainingPercentage:F1}%) - {fix.GroundSpeed:F0} kts");
+                    Console.WriteLine($"{prefix}{fix.FixName,-12} {fix.Timestamp:HH:mm:ss} - {fix.FuelRemaining.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} kg ({fix.FuelRemainingPercentage.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}%) - {fix.GroundSpeed.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} kts");
                 }
                 Console.WriteLine("    (* = most recent)");
             }
