@@ -35,12 +35,6 @@ namespace MsfsOfpLog.Services
             }
         }
         
-        public void LogGpsFixData(GpsFixData fixData)
-        {
-            // GPS fix data is now only logged to the summary file
-            // Individual fix logging removed to keep only summary functionality
-        }
-        
         public void SaveFlightSummary(IReadOnlyList<GpsFixData> passedFixes, string aircraftTitle, FlightPlanParser.FlightPlanInfo? flightPlan = null)
         {
             try
@@ -334,31 +328,6 @@ namespace MsfsOfpLog.Services
         private double ToRadians(double degrees)
         {
             return degrees * Math.PI / 180;
-        }
-        
-        public List<string> GetPreviousFlights()
-        {
-            try
-            {
-                if (string.IsNullOrEmpty(_logDirectory))
-                {
-                    return new List<string>();
-                }
-                
-                var files = Directory.GetFiles(_logDirectory, "flight_*_summary.txt")
-                    .Select(Path.GetFileNameWithoutExtension)
-                    .Where(f => f != null)
-                    .Cast<string>()
-                    .OrderByDescending(f => f)
-                    .ToList();
-                
-                return files;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error getting previous flights: {ex.Message}");
-                return new List<string>();
-            }
-        }
+        }           
     }
 }

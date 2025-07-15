@@ -54,9 +54,6 @@ namespace MsfsOfpLog
             dataLogger = new DataLogger(systemClock);
             cancellationTokenSource = new CancellationTokenSource();
             
-            // Set up event handlers
-            gpsFixTracker.FixPassed += OnFixPassed;
-            
             // Auto-connect on startup
             await ConnectToMsfs();
             
@@ -394,15 +391,6 @@ namespace MsfsOfpLog
             
             // Check if we're near any GPS fixes, passing current flight state
             gpsFixTracker?.CheckPosition(aircraftData, hasBeenAirborne);
-        }
-        
-        private static void OnFixPassed(object? sender, GpsFixData fixData)
-        {
-            // Log the GPS fix data
-            dataLogger?.LogGpsFixData(fixData);
-            
-            // No need to display notification here - it will be shown in DisplayCurrentStatus()
-            // The next refresh of DisplayCurrentStatus will show the new GPS fix
         }
         
         private static void DisplayCurrentStatus()
