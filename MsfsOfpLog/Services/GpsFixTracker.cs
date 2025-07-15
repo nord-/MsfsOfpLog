@@ -72,7 +72,7 @@ namespace MsfsOfpLog.Services
                         FixName = fix.Name,
                         Latitude = aircraftData.Latitude,
                         Longitude = aircraftData.Longitude,
-                        FuelRemaining = aircraftData.FuelTotalQuantity, // Already in kg for mock service
+                        FuelRemaining = (int)(aircraftData.FuelTotalQuantity * 3.032), // Convert from gallons to kg
                         FuelRemainingPercentage = aircraftData.FuelTotalCapacity > 0 ? (aircraftData.FuelTotalQuantity / aircraftData.FuelTotalCapacity) * 100 : 0,
                         GroundSpeed = aircraftData.GroundSpeed,
                         Altitude = aircraftData.Altitude,

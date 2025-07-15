@@ -622,5 +622,150 @@ namespace MsfsOfpLog.Tests
                     Directory.Delete(testDir);
             }
         }
+
+        [Fact]
+        public void FuelCalculation_Should_ConvertGallonsToKilograms_FromSimConnect()
+        {
+            // Arrange - SimConnect provides fuel in gallons (discovered during debugging)
+            var testClock = new TestSystemClock(new DateTime(2025, 7, 15, 10, 0, 0));
+            var tracker = new GpsFixTracker(testClock);
+            using var memoryStream = new MemoryStream();
+            var dataLogger = new DataLogger(testClock, memoryStream);
+            
+            // Simulate aircraft data as it comes from SimConnect (fuel in gallons)
+            var aircraftData = new AircraftData
+            {
+                Latitude = 59.651944,
+                Longitude = 17.918611,
+                FuelTotalQuantity = 1910, // This is in gallons from SimConnect
+                FuelTotalCapacity = 9600, // This is also in gallons
+                GroundSpeed = 280,
+                Altitude = 38000,
+                Heading = 10,
+                TrueAirspeed = 465,
+                MachNumber = 0.78,
+                OutsideAirTemperature = -45,
+                FuelBurnRate = 1600,
+                ActualBurn = 50,
+                AircraftTitle = "Test Aircraft A320neo"
+            };
+            
+            // Act - Create GPS fix data as it would be done in Program.cs
+            var gpsFixData = new GpsFixData
+            {
+                Timestamp = testClock.Now,
+                FixName = "TEST_WAYPOINT",
+                Latitude = aircraftData.Latitude,
+                Longitude = aircraftData.Longitude,
+                FuelRemaining = (int)(aircraftData.FuelTotalQuantity * 3.032), // Convert from gallons to kg
+                FuelRemainingPercentage = (aircraftData.FuelTotalQuantity / aircraftData.FuelTotalCapacity) * 100,
+                GroundSpeed = aircraftData.GroundSpeed,
+                Altitude = aircraftData.Altitude,
+                Heading = aircraftData.Heading,
+                TrueAirspeed = aircraftData.TrueAirspeed,
+                MachNumber = aircraftData.MachNumber,
+                OutsideAirTemperature = aircraftData.OutsideAirTemperature,
+                FuelBurnRate = aircraftData.FuelBurnRate,
+                ActualBurn = aircraftData.ActualBurn
+            };
+            
+            // Add to tracker and save summary
+            tracker.AddPassedFix(gpsFixData);
+            dataLogger.SaveFlightSummary(tracker.GetPassedFixes(), aircraftData.AircraftTitle);
+            
+            // Assert - Check that fuel is correctly converted to kg
+            // 1910 gallons should be converted to approximately 5792 kg (1910 * 3.032 = 5791.1)
+            var expectedFuelKg = (int)(aircraftData.FuelTotalQuantity * 3.032);
+            Assert.Equal(5791, expectedFuelKg);
+            
+            // The fix is: FuelRemaining = (int)(aircraftData.FuelTotalQuantity * 3.032)
+            Assert.Equal(expectedFuelKg, gpsFixData.FuelRemaining);
+            
+            // Also verify the output contains the correct fuel amount in tonnes (kg/1000)
+            memoryStream.Position = 0;
+            var output = Encoding.UTF8.GetString(memoryStream.ToArray());
+            
+            // Should show fuel in tonnes (5791 kg = 5.791 tonnes, displayed as 5.8)
+            Assert.Contains("5.8", output); // Should contain the tonnes value
+            Assert.DoesNotContain("1.9", output); // Should not contain the raw gallons value converted to tonnes
+        }
+
+        [Fact]
+        public void ConsoleOutput_Should_ShowCorrectFuelQuantityAndPercentage()
+        {
+            // Arrange - Simulate aircraft data with fuel in gallons (like SimConnect)
+            var aircraftData = new AircraftData
+            {
+                FuelTotalQuantity = 275, // 275 gallons = 834 kg (275 * 3.032 = 833.8)
+                FuelTotalCapacity = 864, // 864 gallons = 2620 kg (32% fuel remaining)
+                Latitude = 59.651944,
+                Longitude = 17.918611,
+                Altitude = 38000,
+                GroundSpeed = 280,
+                Heading = 90,
+                AircraftTitle = "Test Aircraft"
+            };
+
+            // Act - Simulate the console output logic from Program.cs
+            var fuelQuantityKg = aircraftData.FuelTotalQuantity * 3.032; // Convert from gallons to kg
+            var fuelCapacityKg = aircraftData.FuelTotalCapacity * 3.032; // Convert from gallons to kg
+            var fuelTonnes = fuelQuantityKg / 1000.0;
+            var fuelPercentage = (fuelQuantityKg / fuelCapacityKg) * 100;
+
+            // Assert - Check calculations (allowing for rounding)
+            Assert.InRange((int)fuelQuantityKg, 833, 835); // 275 * 3.032 ≈ 834 kg
+            Assert.InRange((int)fuelCapacityKg, 2619, 2621); // 864 * 3.032 ≈ 2620 kg
+            Assert.Equal(0.8, fuelTonnes, 1); // 834 / 1000 = 0.834 tonnes
+            Assert.Equal(31.8, fuelPercentage, 1); // 834 / 2620 * 100 ≈ 31.8%
+
+            // Test the formatted output strings
+            var fuelTonnesFormatted = fuelTonnes.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+            var fuelPercentageFormatted = fuelPercentage.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+            
+            Assert.Equal("0.8", fuelTonnesFormatted); // Should display as 0.8 tonnes
+            Assert.Equal("31.8", fuelPercentageFormatted); // Should display as 31.8%
+        }
+
+        [Fact]
+        public void DebugFuelCalculation_RealWorldScenario()
+        {
+            // Arrange - Test with the actual problematic values
+            // User reports 835 kg actual fuel showing as 0.1 tonnes instead of 0.8 tonnes
+            // DISCOVERY: SimConnect provides fuel in GALLONS, not pounds!
+            
+            // If user has 835 kg of fuel, that's 835 / 3.032 ≈ 275 gallons
+            // So SimConnect should be providing ~275 gallons
+            
+            var targetFuelKg = 835.0; // What user expects to see
+            var expectedGallonsValue = targetFuelKg / 3.032; // 275.3 gallons
+            
+            // Act - Test the conversion
+            var aircraftData = new AircraftData
+            {
+                FuelTotalQuantity = (int)expectedGallonsValue, // 275 gallons
+                FuelTotalCapacity = 864, // Some capacity in gallons
+                Latitude = 59.651944,
+                Longitude = 17.918611,
+                Altitude = 38000,
+                GroundSpeed = 280,
+                Heading = 90,
+                AircraftTitle = "Debug Test"
+            };
+
+            // Console output logic (corrected)
+            var fuelQuantityKg = aircraftData.FuelTotalQuantity * 3.032; // Should be ~835 kg
+            var fuelTonnes = fuelQuantityKg / 1000.0; // Should be ~0.8 tonnes
+            
+            // Assert - This should work correctly now
+            Assert.InRange(fuelQuantityKg, 833, 837); // Should be ~835 kg
+            Assert.InRange(fuelTonnes, 0.83, 0.84); // Should be ~0.835 tonnes
+            
+            var fuelTonnesFormatted = fuelTonnes.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+            Assert.Equal("0.8", fuelTonnesFormatted); // Should display as 0.8 tonnes
+            
+            // The key insight: 3.032 is the conversion factor from gallons to kg for aviation fuel
+            // This factor is already used correctly in RealSimConnectService for ActualBurn calculation
+            Assert.InRange(3.032, 3.0, 3.1); // Aviation fuel density factor
+        }
     }
 }

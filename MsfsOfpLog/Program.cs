@@ -341,7 +341,7 @@ namespace MsfsOfpLog
                     FixName = $"TAKEOFF {departureAirport}", // Use actual departure airport
                     Latitude = aircraftData.Latitude,
                     Longitude = aircraftData.Longitude,
-                    FuelRemaining = aircraftData.FuelTotalQuantity, // Already in kg for mock service
+                    FuelRemaining = (int)(aircraftData.FuelTotalQuantity * 3.032), // Convert from gallons to kg
                     FuelRemainingPercentage = aircraftData.FuelTotalCapacity > 0 ? 
                         (aircraftData.FuelTotalQuantity / aircraftData.FuelTotalCapacity) * 100 : 0,
                     GroundSpeed = aircraftData.GroundSpeed,
@@ -370,7 +370,7 @@ namespace MsfsOfpLog
                     FixName = $"LANDING {destinationAirport}", // Use actual destination airport
                     Latitude = aircraftData.Latitude,
                     Longitude = aircraftData.Longitude,
-                    FuelRemaining = aircraftData.FuelTotalQuantity, // Already in kg for mock service
+                    FuelRemaining = (int)(aircraftData.FuelTotalQuantity * 3.032), // Convert from gallons to kg
                     FuelRemainingPercentage = aircraftData.FuelTotalCapacity > 0 ? 
                         (aircraftData.FuelTotalQuantity / aircraftData.FuelTotalCapacity) * 100 : 0,
                     GroundSpeed = aircraftData.GroundSpeed,
@@ -438,8 +438,8 @@ namespace MsfsOfpLog
                 Console.WriteLine($"  Altitude:  {currentAircraftData.Altitude.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} ft");
                 Console.WriteLine($"  Ground Speed: {currentAircraftData.GroundSpeed.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} kts");
                 Console.WriteLine($"  Heading:   {currentAircraftData.Heading.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)}°");
-                var fuelQuantityKg = currentAircraftData.FuelTotalQuantity; // Already in kg for mock service
-                var fuelCapacityKg = currentAircraftData.FuelTotalCapacity * 3.032; // Convert gallons to kg
+                var fuelQuantityKg = currentAircraftData.FuelTotalQuantity * 3.032; // Convert from gallons to kg
+                var fuelCapacityKg = currentAircraftData.FuelTotalCapacity * 3.032; // Convert from gallons to kg
                 Console.WriteLine($"  Fuel:      {(fuelQuantityKg/1000).ToString("F1", System.Globalization.CultureInfo.InvariantCulture)} t ({(fuelQuantityKg / fuelCapacityKg * 100).ToString("F1", System.Globalization.CultureInfo.InvariantCulture)}%)");
                 Console.WriteLine($"  Aircraft:  {currentAircraftData.AircraftTitle}");
             }
