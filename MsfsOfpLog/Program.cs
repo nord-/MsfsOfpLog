@@ -24,6 +24,9 @@ namespace MsfsOfpLog
         
         static async Task Main(string[] args)
         {
+            // Set console encoding to UTF-8 for proper emoji display
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
+            
             Console.WriteLine("Welcome to MSFS OFP Log!");
             Console.WriteLine("This tool will track your GPS fixes and fuel consumption during flight.");
             Console.WriteLine();

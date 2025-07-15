@@ -1,48 +1,37 @@
 # MsfsOfpLog
 
-A .NET console application for tracking GPS fixes and fuel consumption in Microsoft Flight Simulator using SimConnect API.
+A .NET console application for tracking GPS fixes and fuel consumption in Microsoft Flight Simulator using SimConnect API, generating professional OFP (Operational Flight Plan) summaries.
 
 ## Features
 
 - **Real-time MSFS integration** using SimConnect API with automatic connection
-- **Demo mode** for testing without MSFS running
 - **Smart GPS fix tracking** with configurable tolerance zones
 - **Intelligent flight state tracking** - distinguishes pre-flight vs post-flight taxi
 - **Automatic takeoff and landing detection** - records these key flight events
 - **Speed-based recording** - only records GPS fixes when airborne (>45 knots)
-- **Automatic monitoring stop** - stops only after aircraft has landed and is taxiing
-- **Fuel consumption monitoring** in kilograms at each GPS fix
+- **Fuel consumption monitoring** at each GPS fix
 - **Flight plan support** for MSFS .pln files
-- **Data logging** in CSV, JSON, and summary formats
-- **Continuous position updates** every 5 seconds with fixed console display
-- **Clean monitoring interface** - current position at top, GPS fixes listed below
-- **Route string parsing** for quick GPS fix setup
-- **Manual GPS fix entry** for custom waypoints
-- **Graceful shutdown** with Ctrl+C to save flight data
+- **OFP summary generation** - Professional aviation format with fuel consumption analysis
+- **Continuous position updates** with real-time monitoring
 
 ## Requirements
 
 - .NET 8.0 SDK or later
 - Microsoft Flight Simulator (2020 or later)
-- MSFS SDK (for SimConnect library)
 
 ## Installation
 
 1. **Install .NET SDK** from: https://dotnet.microsoft.com/download
 
-2. **Install MSFS SDK:**
-   - Download from: https://docs.flightsimulator.com/html/Programming_Tools/SimConnect/SimConnect_SDK.html
-   - Extract to `C:\MSFS SDK\` (or update the path in the .csproj file)
-
-3. **Build the project:**
+2. **Build the project:**
    ```powershell
    dotnet restore
    dotnet build
    ```
 
-## Usage
+   *Note: The required SimConnect DLLs are included with the project and will be copied to the output directory during build.*
 
-### Real Mode (with MSFS)
+## Usage
 
 1. **Start MSFS** and load into a flight (not the main menu)
 2. **Enable SimConnect** in MSFS settings if not already enabled
@@ -50,71 +39,33 @@ A .NET console application for tracking GPS fixes and fuel consumption in Micros
    ```powershell
    dotnet run
    ```
-4. The application will automatically connect to MSFS
-
-### Demo Mode (without MSFS)
-
-1. **Run the application in demo mode:**
-   ```powershell
-   dotnet run -- --demo
-   ```
-2. Uses mock data for testing and development
+4. The application will automatically connect to MSFS and start monitoring
 
 ### Workflow
 
-1. **Load route or flight plan:**
-   - Enter route string (e.g., "LOWW DCT VIE DCT RIVER DCT LOWG")
-   - Load MSFS .pln flight plan file
-   - Or add GPS fixes manually
-
-2. **Start monitoring:**
-   - Real-time position and fuel updates every 5 seconds
-   - Displays current flight phase (Pre-flight taxi, Airborne, Post-flight taxi)
-   - Automatic GPS fix detection and logging (only when airborne >45 knots)
-   - Fuel consumption tracking in kilograms
-   - Monitoring automatically stops only after aircraft has landed and is taxiing
-
-3. **Stop monitoring:**
-   - Press Ctrl+C for manual graceful shutdown
-   - Or monitoring stops automatically when aircraft lands/taxis
-   - Flight data automatically saved to logs
-
-## Menu Options
-
-1. **Load route string** - Parse route like "LOWW DCT VIE DCT RIVER DCT LOWG"
-2. **Load flight plan** - Load MSFS .pln flight plan file
-3. **Add GPS fixes manually** - Enter waypoint coordinates manually
-4. **Start monitoring** - Begin continuous position and fuel tracking
-5. **Stop monitoring** - End tracking and save flight summary
-6. **Reset flight data** - Clear current flight data
-7. **View previous flights** - List previous flight logs
-8. **Exit** - Quit the application
-
-*Note: The application automatically connects to MSFS on startup (or uses demo mode if --demo flag is used)*
+1. **Load flight plan:** Choose to load an MSFS .pln flight plan file
+2. **Start monitoring:** Real-time position and fuel updates with automatic GPS fix detection
+3. **Fly your route:** Application tracks waypoint passages and fuel consumption
+4. **Complete flight:** Monitoring stops automatically when aircraft lands
+5. **Review OFP summary:** Professional flight report saved to Documents folder
 
 ## Data Output
 
-The application creates log files in `Documents\MSFS OFP Log\`:
+The application creates OFP summary files in `Documents\MSFS OFP Log\`:
 
-- **CSV files** - Structured data for analysis
-- **JSON files** - Machine-readable format
-- **Summary files** - Human-readable flight reports
+- **OFP Summary files** - Professional aviation format flight reports with:
+  - Route information and waypoint details
+  - Fuel consumption analysis between fixes
+  - Flight timing and distance calculations
+  - Coordinate formatting in aviation standard
 
-## Sample Data
+## Sample OFP Output
 
-Each GPS fix passage records:
-- Timestamp
-- Fix name and coordinates (including TAKEOFF and LANDING events)
-- Remaining fuel (kilograms and percentage)
-- Aircraft altitude and speed
-- Heading and ground speed
-
-## Command Line Options
-
-```powershell
-dotnet run                # Real mode (connects to MSFS)
-dotnet run -- --demo     # Demo mode (uses mock data)
-```
+Each flight generates a comprehensive OFP summary including:
+- Flight header with departure/destination airports
+- Waypoint table with coordinates, times, and fuel data
+- Fuel consumption analysis between waypoints
+- Total flight statistics
 
 ## Troubleshooting
 
@@ -124,16 +75,25 @@ dotnet run -- --demo     # Demo mode (uses mock data)
 - Verify MSFS SDK is properly installed
 
 **GPS Fix Detection:**
-- Increase tolerance if fixes are being missed
-- Ensure coordinates are accurate
-- Check that you're actually flying through the fix area
+- Ensure you're flying through the waypoint tolerance zones
+- Check that flight plan coordinates are accurate
 
 ## Development
 
 The project is structured with:
-- `Models/` - Data structures
-- `Services/` - Core functionality (SimConnect, GPS tracking, logging)
-- `Program.cs` - Main application and menu system
+- `Models/` - Data structures for aircraft data and GPS fixes
+- `Services/` - Core functionality (SimConnect, GPS tracking, OFP generation)
+- `Program.cs` - Main application logic
+- `Tests/` - Unit tests with in-memory stream testing
+
+## Testing
+
+Run the unit tests with:
+```powershell
+dotnet test
+```
+
+Tests use in-memory streams to verify OFP generation without file I/O.
 
 ## Contributing
 
