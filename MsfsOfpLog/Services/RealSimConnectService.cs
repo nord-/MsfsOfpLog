@@ -234,7 +234,7 @@ namespace MsfsOfpLog.Services
                 }
                 
                 // Calculate actual burn
-                var actualBurn = initialFuelAmount.HasValue ? (initialFuelAmount.Value - aircraftData.FuelTotalQuantity) * 3.032 : 0;
+                var actualBurn = initialFuelAmount.HasValue ? FuelConverter.GallonsToKg(initialFuelAmount.Value - aircraftData.FuelTotalQuantity) : 0;
                 
                 var dataObj = new AircraftData
                 {
@@ -248,7 +248,7 @@ namespace MsfsOfpLog.Services
                     TrueAirspeed = aircraftData.TrueAirspeed,
                     MachNumber = aircraftData.MachNumber,
                     OutsideAirTemperature = aircraftData.OutsideAirTemperature,
-                    FuelBurnRate = aircraftData.FuelBurnRate * 3.032, // Convert from GPH to kg/hr
+                    FuelBurnRate = FuelConverter.GallonsToKg(aircraftData.FuelBurnRate), // Convert from GPH to kg/hr
                     ActualBurn = actualBurn,
                     AircraftTitle = aircraftData.AircraftTitle
                 };

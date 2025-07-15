@@ -675,7 +675,7 @@ namespace MsfsOfpLog.Tests
                 FixName = "TEST_WAYPOINT",
                 Latitude = aircraftData.Latitude,
                 Longitude = aircraftData.Longitude,
-                FuelRemaining = (int)(aircraftData.FuelTotalQuantity * 3.032), // Convert from gallons to kg
+                FuelRemaining = FuelConverter.GallonsToKgInt(aircraftData.FuelTotalQuantity), // Convert from gallons to kg
                 FuelRemainingPercentage = (aircraftData.FuelTotalQuantity / aircraftData.FuelTotalCapacity) * 100,
                 GroundSpeed = aircraftData.GroundSpeed,
                 Altitude = aircraftData.Altitude,
@@ -693,10 +693,10 @@ namespace MsfsOfpLog.Tests
             
             // Assert - Check that fuel is correctly converted to kg
             // 1910 gallons should be converted to approximately 5792 kg (1910 * 3.032 = 5791.1)
-            var expectedFuelKg = (int)(aircraftData.FuelTotalQuantity * 3.032);
+            var expectedFuelKg = FuelConverter.GallonsToKgInt(aircraftData.FuelTotalQuantity);
             Assert.Equal(5791, expectedFuelKg);
             
-            // The fix is: FuelRemaining = (int)(aircraftData.FuelTotalQuantity * 3.032)
+            // The fix is: FuelRemaining = FuelConverter.GallonsToKgInt(aircraftData.FuelTotalQuantity)
             Assert.Equal(expectedFuelKg, gpsFixData.FuelRemaining);
             
             // Also verify the output contains the correct fuel amount in tonnes (kg/1000)
@@ -725,14 +725,14 @@ namespace MsfsOfpLog.Tests
             };
 
             // Act - Simulate the console output logic from Program.cs
-            var fuelQuantityKg = aircraftData.FuelTotalQuantity * 3.032; // Convert from gallons to kg
-            var fuelCapacityKg = aircraftData.FuelTotalCapacity * 3.032; // Convert from gallons to kg
+            var fuelQuantityKg = FuelConverter.GallonsToKg(aircraftData.FuelTotalQuantity); // Convert from gallons to kg
+            var fuelCapacityKg = FuelConverter.GallonsToKg(aircraftData.FuelTotalCapacity); // Convert from gallons to kg
             var fuelTonnes = fuelQuantityKg / 1000.0;
             var fuelPercentage = (fuelQuantityKg / fuelCapacityKg) * 100;
 
             // Assert - Check calculations (allowing for rounding)
-            Assert.InRange((int)fuelQuantityKg, 833, 835); // 275 * 3.032 ≈ 834 kg
-            Assert.InRange((int)fuelCapacityKg, 2619, 2621); // 864 * 3.032 ≈ 2620 kg
+            Assert.InRange((int)fuelQuantityKg, 833, 835); // 275 gallons ≈ 834 kg
+            Assert.InRange((int)fuelCapacityKg, 2619, 2621); // 864 gallons ≈ 2620 kg
             Assert.Equal(0.8, fuelTonnes, 1); // 834 / 1000 = 0.834 tonnes
             Assert.Equal(31.8, fuelPercentage, 1); // 834 / 2620 * 100 ≈ 31.8%
 
@@ -755,7 +755,7 @@ namespace MsfsOfpLog.Tests
             // So SimConnect should be providing ~275 gallons
             
             var targetFuelKg = 835.0; // What user expects to see
-            var expectedGallonsValue = targetFuelKg / 3.032; // 275.3 gallons
+            var expectedGallonsValue = FuelConverter.KgToGallons(targetFuelKg); // 275.3 gallons
             
             // Act - Test the conversion
             var aircraftData = new AircraftData
@@ -771,7 +771,7 @@ namespace MsfsOfpLog.Tests
             };
 
             // Console output logic (corrected)
-            var fuelQuantityKg = aircraftData.FuelTotalQuantity * 3.032; // Should be ~835 kg
+            var fuelQuantityKg = FuelConverter.GallonsToKg(aircraftData.FuelTotalQuantity); // Should be ~835 kg
             var fuelTonnes = fuelQuantityKg / 1000.0; // Should be ~0.8 tonnes
             
             // Assert - This should work correctly now
@@ -781,9 +781,39 @@ namespace MsfsOfpLog.Tests
             var fuelTonnesFormatted = fuelTonnes.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
             Assert.Equal("0.8", fuelTonnesFormatted); // Should display as 0.8 tonnes
             
-            // The key insight: 3.032 is the conversion factor from gallons to kg for aviation fuel
+            // The key insight: FuelConverter.GetKgPerGallonFactor() is the conversion factor from gallons to kg for aviation fuel
             // This factor is already used correctly in RealSimConnectService for ActualBurn calculation
-            Assert.InRange(3.032, 3.0, 3.1); // Aviation fuel density factor
+            Assert.InRange(FuelConverter.GetKgPerGallonFactor(), 3.0, 3.1); // Aviation fuel density factor
+        }
+        
+        [Fact]
+        public void FuelConverter_Should_ConvertBetweenUnits_Correctly()
+        {
+            // Arrange
+            var testGallons = 100.0;
+            var testKg = 303.2; // 100 * 3.032
+            
+            // Act & Assert - Test gallons to kg conversion
+            Assert.Equal(303.2, FuelConverter.GallonsToKg(testGallons), 1);
+            Assert.Equal(303, FuelConverter.GallonsToKgInt(testGallons));
+            
+            // Act & Assert - Test kg to gallons conversion
+            Assert.Equal(100.0, FuelConverter.KgToGallons(testKg), 1);
+            
+            // Act & Assert - Test kg to tonnes conversion
+            Assert.Equal(0.3032, FuelConverter.KgToTonnes(testKg), 4);
+            
+            // Act & Assert - Test gallons to tonnes conversion
+            Assert.Equal(0.3032, FuelConverter.GallonsToTonnes(testGallons), 4);
+            
+            // Act & Assert - Test conversion factor
+            Assert.Equal(3.032, FuelConverter.GetKgPerGallonFactor());
+            
+            // Test with real-world values
+            var realWorldGallons = 275.0; // Value from our test case
+            
+            Assert.InRange(FuelConverter.GallonsToKg(realWorldGallons), 833.0, 835.0);
+            Assert.Equal(834, FuelConverter.GallonsToKgInt(realWorldGallons));
         }
     }
 }
