@@ -278,7 +278,7 @@ namespace MsfsOfpLog
             var passedFixes = gpsFixTracker?.GetPassedFixes();
             if (passedFixes != null && passedFixes.Count > 0)
             {
-                dataLogger?.SaveFlightSummary(passedFixes, currentAircraftTitle);
+                dataLogger?.SaveFlightSummary(passedFixes, currentAircraftTitle, currentFlightPlan);
                 Console.WriteLine($"Flight completed! {passedFixes.Count} GPS fixes were logged.");
             }
             else

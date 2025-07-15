@@ -81,12 +81,21 @@ namespace MsfsOfpLog.Tests
             using var memoryStream = new MemoryStream();
             var dataLogger = new DataLogger(testClock, memoryStream);
             
+            // Create a mock flight plan with proper airport names
+            var mockFlightPlan = new FlightPlanParser.FlightPlanInfo
+            {
+                DepartureID = "LGRP",
+                DestinationID = "ESSA",
+                DepartureName = "DIAGORAS",
+                DestinationName = "ARLANDA"
+            };
+            
             // Create a comprehensive flight plan with all waypoints
             var fixes = CreateComprehensiveFlightPlan(testClock);
             
             // Act
             var exception = Record.Exception(() => 
-                dataLogger.SaveFlightSummary(fixes.AsReadOnly(), "Airbus A320neo - Complete LGRP to ESSA"));
+                dataLogger.SaveFlightSummary(fixes.AsReadOnly(), "Airbus A320neo - Complete LGRP to ESSA", mockFlightPlan));
             
             // Assert
             Assert.Null(exception);
@@ -112,6 +121,15 @@ namespace MsfsOfpLog.Tests
             var tracker = new GpsFixTracker(testClock);
             using var memoryStream = new MemoryStream();
             var dataLogger = new DataLogger(testClock, memoryStream);
+            
+            // Create a mock flight plan with proper airport names
+            var mockFlightPlan = new FlightPlanParser.FlightPlanInfo
+            {
+                DepartureID = "LGRP",
+                DestinationID = "ESSA",
+                DepartureName = "DIAGORAS",
+                DestinationName = "ARLANDA"
+            };
             
             var passedFixes = new List<GpsFixData>();
             
@@ -195,7 +213,7 @@ namespace MsfsOfpLog.Tests
             
             // Act
             var exception = Record.Exception(() => 
-                dataLogger.SaveFlightSummary(tracker.GetPassedFixes(), "Test Flight A320neo"));
+                dataLogger.SaveFlightSummary(tracker.GetPassedFixes(), "Test Flight A320neo", mockFlightPlan));
             
             // Assert
             Assert.Null(exception);
@@ -671,7 +689,7 @@ namespace MsfsOfpLog.Tests
             
             // Add to tracker and save summary
             tracker.AddPassedFix(gpsFixData);
-            dataLogger.SaveFlightSummary(tracker.GetPassedFixes(), aircraftData.AircraftTitle);
+            dataLogger.SaveFlightSummary(tracker.GetPassedFixes(), aircraftData.AircraftTitle, null); // No flight plan for this test
             
             // Assert - Check that fuel is correctly converted to kg
             // 1910 gallons should be converted to approximately 5792 kg (1910 * 3.032 = 5791.1)

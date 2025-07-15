@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using MsfsOfpLog.Models;
+using MsfsOfpLog.Services;
 using static System.Globalization.CultureInfo;
 
 namespace MsfsOfpLog.Services
@@ -40,7 +41,7 @@ namespace MsfsOfpLog.Services
             // Individual fix logging removed to keep only summary functionality
         }
         
-        public void SaveFlightSummary(IReadOnlyList<GpsFixData> passedFixes, string aircraftTitle)
+        public void SaveFlightSummary(IReadOnlyList<GpsFixData> passedFixes, string aircraftTitle, FlightPlanParser.FlightPlanInfo? flightPlan = null)
         {
             try
             {
@@ -61,10 +62,10 @@ namespace MsfsOfpLog.Services
                 using (var writer = new StreamWriter(stream, leaveOpen: !shouldDisposeStream))
                 {
                     // Extract departure and destination from first and last fixes
-                    var departureCode = "LGRP";
-                    var destinationCode = "ESSA";
-                    var departureFullName = "DIAGORAS";
-                    var destinationFullName = "ARLANDA";
+                    var departureCode = "UNKNOWN";
+                    var destinationCode = "UNKNOWN";
+                    var departureFullName = "UNKNOWN";
+                    var destinationFullName = "UNKNOWN";
                     
                     if (passedFixes.Count > 0)
                     {
@@ -74,13 +75,23 @@ namespace MsfsOfpLog.Services
                         if (firstFix.FixName.StartsWith("TAKEOFF"))
                         {
                             var parts = firstFix.FixName.Split(' ');
-                            if (parts.Length > 1) departureCode = parts[1];
+                            if (parts.Length > 1) 
+                            {
+                                departureCode = parts[1];
+                                // Use flight plan departure name if available, otherwise use airport code
+                                departureFullName = flightPlan?.DepartureName ?? departureCode;
+                            }
                         }
                         
                         if (lastFix.FixName.StartsWith("LANDING"))
                         {
                             var parts = lastFix.FixName.Split(' ');
-                            if (parts.Length > 1) destinationCode = parts[1];
+                            if (parts.Length > 1) 
+                            {
+                                destinationCode = parts[1];
+                                // Use flight plan destination name if available, otherwise use airport code
+                                destinationFullName = flightPlan?.DestinationName ?? destinationCode;
+                            }
                         }
                     }
                     
