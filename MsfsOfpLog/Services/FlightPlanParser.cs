@@ -26,6 +26,9 @@ namespace MsfsOfpLog.Services
         {
             try
             {
+                // Remove quotes from file path if present
+                filePath = filePath.Trim().Trim('"');
+                
                 if (!File.Exists(filePath))
                 {
                     Console.WriteLine($"Flight plan file not found: {filePath}");

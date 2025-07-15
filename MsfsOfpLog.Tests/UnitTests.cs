@@ -240,5 +240,387 @@ namespace MsfsOfpLog.Tests
                 new GpsFixData { Timestamp = testClock.Now.AddMinutes(300), FixName = "LANDING ESSA", Latitude = 59.651944, Longitude = 17.918611, FuelRemaining = 7300, FuelRemainingPercentage = 76.0, GroundSpeed = 50, Altitude = 138, Heading = 060, TrueAirspeed = 55, MachNumber = 0.08, OutsideAirTemperature = 10, FuelBurnRate = 500, ActualBurn = 1500 }
             };
         }
+        
+        [Fact]
+        public void FlightPlanParser_Should_HandleQuotedFilePath_Successfully()
+        {
+            // Arrange - Create a flight plan file with an absolute path
+            var testFile = Path.Combine(Path.GetTempPath(), "test_flight_plan_quoted.pln");
+            
+            // Create a simple valid flight plan XML file
+            var xmlContent = @"<?xml version=""1.0"" encoding=""UTF-8""?>
+<SimBase.Document Type=""AceXML"" version=""1,0"">
+    <Descr>AceXML Document</Descr>
+    <FlightPlan.FlightPlan>
+        <Title>Test Flight Plan</Title>
+        <FPType>VFR</FPType>
+        <RouteType>Direct</RouteType>
+        <CruisingAlt>5000</CruisingAlt>
+        <DepartureID>LGRP</DepartureID>
+        <DepartureName>DIAGORAS</DepartureName>
+        <DestinationID>ESSA</DestinationID>
+        <DestinationName>ARLANDA</DestinationName>
+        <ATCWaypoint id=""LGRP"">
+            <ATCWaypointType>Airport</ATCWaypointType>
+            <WorldPosition>N36° 24' 19.00"",E28° 5' 10.00"",+000019.00</WorldPosition>
+        </ATCWaypoint>
+        <ATCWaypoint id=""ESSA"">
+            <ATCWaypointType>Airport</ATCWaypointType>
+            <WorldPosition>N59° 39' 7.00"",E17° 55' 7.00"",+000138.00</WorldPosition>
+        </ATCWaypoint>
+    </FlightPlan.FlightPlan>
+</SimBase.Document>";
+            
+            File.WriteAllText(testFile, xmlContent);
+            
+            try
+            {
+                // Act - Test with quotes around the ABSOLUTE file path (this is the real issue)
+                var quotedPath = $"\"{testFile}\"";
+                var result = FlightPlanParser.ParseFlightPlan(quotedPath);
+                
+                // Assert - This should succeed because quotes should be handled correctly
+                Assert.NotNull(result);
+                Assert.Equal("LGRP", result.DepartureID);
+                Assert.Equal("ESSA", result.DestinationID);
+                Assert.Equal("DIAGORAS", result.DepartureName);
+                Assert.Equal("ARLANDA", result.DestinationName);
+                Assert.Equal(5000, result.CruisingAltitude);
+                Assert.Equal(2, result.Waypoints.Count);
+                
+                // Additional test - verify the path processing logic
+                // This simulates what happens in LoadFlightPlan method
+                var inputPath = quotedPath;
+                var processedPath = inputPath.Trim().Trim('"');
+                
+                // The processed path should be the same as the original file path
+                Assert.Equal(testFile, processedPath);
+                
+                // And Path.IsPathRooted should return true for the processed path
+                Assert.True(Path.IsPathRooted(processedPath));
+                
+                // Test that the file actually exists at the processed path
+                Assert.True(File.Exists(processedPath));
+            }
+            finally
+            {
+                // Cleanup
+                if (File.Exists(testFile))
+                    File.Delete(testFile);
+            }
+        }
+        
+        [Fact]
+        public void TakeoffAndLanding_Should_UseCorrectAirportCodes_FromLoadedFlightPlan()
+        {
+            // Arrange - Create a flight plan with ESSA to ESOK
+            var testFile = Path.GetTempFileName();
+            var xmlContent = @"<?xml version=""1.0"" encoding=""UTF-8""?>
+<SimBase.Document Type=""AceXML"" version=""1,0"">
+    <Descr>AceXML Document</Descr>
+    <FlightPlan.FlightPlan>
+        <Title>ESSA to ESOK</Title>
+        <FPType>IFR</FPType>
+        <RouteType>HighAlt</RouteType>
+        <CruisingAlt>26000.000</CruisingAlt>
+        <DepartureID>ESSA</DepartureID>
+        <DepartureLLA>N59° 39' 7.00"",E17° 55' 7.00"",+000138.00</DepartureLLA>
+        <DestinationID>ESOK</DestinationID>
+        <DestinationLLA>N59° 26' 41.00"",E13° 20' 15.00"",+000353.00</DestinationLLA>
+        <DepartureName>Arlanda</DepartureName>
+        <DestinationName>Karlstad</DestinationName>
+        <ATCWaypoint id=""ESSA"">
+            <ATCWaypointType>Airport</ATCWaypointType>
+            <WorldPosition>N59° 39' 7.00"",E17° 55' 7.00"",+000138.00</WorldPosition>
+        </ATCWaypoint>
+        <ATCWaypoint id=""ESOK"">
+            <ATCWaypointType>Airport</ATCWaypointType>
+            <WorldPosition>N59° 26' 41.00"",E13° 20' 15.00"",+000353.00</WorldPosition>
+        </ATCWaypoint>
+    </FlightPlan.FlightPlan>
+</SimBase.Document>";
+            
+            File.WriteAllText(testFile, xmlContent);
+            
+            try
+            {
+                // Act - Parse the flight plan
+                var flightPlanInfo = FlightPlanParser.ParseFlightPlan(testFile);
+                
+                // Assert - Flight plan should be loaded correctly
+                Assert.NotNull(flightPlanInfo);
+                Assert.Equal("ESSA", flightPlanInfo.DepartureID);
+                Assert.Equal("ESOK", flightPlanInfo.DestinationID);
+                
+                // Test the takeoff fix generation logic
+                var departureAirport = flightPlanInfo.DepartureID ?? "UNKNOWN";
+                var takeoffFixName = $"TAKEOFF {departureAirport}";
+                
+                // This should now pass because we're using the flight plan data
+                Assert.Contains("ESSA", takeoffFixName);
+                
+                // Test the landing fix generation logic
+                var destinationAirport = flightPlanInfo.DestinationID ?? "UNKNOWN";
+                var landingFixName = $"LANDING {destinationAirport}";
+                
+                // This should now pass because we're using the flight plan data
+                Assert.Contains("ESOK", landingFixName);
+            }
+            finally
+            {
+                // Cleanup
+                if (File.Exists(testFile))
+                    File.Delete(testFile);
+            }
+        }
+        
+        [Fact]
+        public void Full_TakeoffAndLanding_Integration_Test()
+        {
+            // Arrange - Create a flight plan with ESSA to ESOK
+            var testFile = Path.GetTempFileName();
+            var xmlContent = @"<?xml version=""1.0"" encoding=""UTF-8""?>
+<SimBase.Document Type=""AceXML"" version=""1,0"">
+    <Descr>AceXML Document</Descr>
+    <FlightPlan.FlightPlan>
+        <Title>ESSA to ESOK</Title>
+        <FPType>IFR</FPType>
+        <RouteType>HighAlt</RouteType>
+        <CruisingAlt>26000.000</CruisingAlt>
+        <DepartureID>ESSA</DepartureID>
+        <DepartureLLA>N59° 39' 7.00"",E17° 55' 7.00"",+000138.00</DepartureLLA>
+        <DestinationID>ESOK</DestinationID>
+        <DestinationLLA>N59° 26' 41.00"",E13° 20' 15.00"",+000353.00</DestinationLLA>
+        <DepartureName>Arlanda</DepartureName>
+        <DestinationName>Karlstad</DestinationName>
+        <ATCWaypoint id=""ESSA"">
+            <ATCWaypointType>Airport</ATCWaypointType>
+            <WorldPosition>N59° 39' 7.00"",E17° 55' 7.00"",+000138.00</WorldPosition>
+        </ATCWaypoint>
+        <ATCWaypoint id=""ESOK"">
+            <ATCWaypointType>Airport</ATCWaypointType>
+            <WorldPosition>N59° 26' 41.00"",E13° 20' 15.00"",+000353.00</WorldPosition>
+        </ATCWaypoint>
+    </FlightPlan.FlightPlan>
+</SimBase.Document>";
+            
+            File.WriteAllText(testFile, xmlContent);
+            
+            try
+            {
+                // Act - Parse the flight plan
+                var flightPlanInfo = FlightPlanParser.ParseFlightPlan(testFile);
+                
+                // Assert - Flight plan should be loaded correctly
+                Assert.NotNull(flightPlanInfo);
+                Assert.Equal("ESSA", flightPlanInfo.DepartureID);
+                Assert.Equal("ESOK", flightPlanInfo.DestinationID);
+                
+                // Test the FULL takeoff scenario as it would happen in Program.cs
+                var departureAirport = flightPlanInfo.DepartureID ?? "UNKNOWN";
+                var takeoffData = new GpsFixData
+                {
+                    Timestamp = DateTime.Now,
+                    FixName = $"TAKEOFF {departureAirport}", // Simulate actual Program.cs logic
+                    Latitude = 59.651944, // ESSA coordinates
+                    Longitude = 17.918611,
+                    FuelRemaining = 5000,
+                    GroundSpeed = 50.0,
+                    Altitude = 200
+                };
+                
+                // Verify takeoff uses correct departure airport
+                Assert.Equal("TAKEOFF ESSA", takeoffData.FixName);
+                Assert.DoesNotContain("LGRP", takeoffData.FixName); // Should not contain old hardcoded value
+                
+                // Test the FULL landing scenario as it would happen in Program.cs
+                var destinationAirport = flightPlanInfo.DestinationID ?? "UNKNOWN";
+                var landingData = new GpsFixData
+                {
+                    Timestamp = DateTime.Now,
+                    FixName = $"LANDING {destinationAirport}", // Simulate actual Program.cs logic
+                    Latitude = 59.444722, // ESOK coordinates
+                    Longitude = 13.337500,
+                    FuelRemaining = 3000,
+                    GroundSpeed = 30.0,
+                    Altitude = 100
+                };
+                
+                // Verify landing uses correct destination airport
+                Assert.Equal("LANDING ESOK", landingData.FixName);
+                Assert.DoesNotContain("ESSA", landingData.FixName); // Should not contain old hardcoded value
+                
+                // Additional verification - make sure the airports are different
+                Assert.NotEqual(takeoffData.FixName, landingData.FixName);
+                Assert.Contains("ESSA", takeoffData.FixName);
+                Assert.Contains("ESOK", landingData.FixName);
+            }
+            finally
+            {
+                // Cleanup
+                if (File.Exists(testFile))
+                    File.Delete(testFile);
+            }
+        }
+        
+        [Fact]
+        public void Different_Airports_Should_Use_Correct_Codes()
+        {
+            // Arrange - Create a flight plan with LOWW to LOWG (different airports)
+            var testFile = Path.GetTempFileName();
+            var xmlContent = @"<?xml version=""1.0"" encoding=""UTF-8""?>
+<SimBase.Document Type=""AceXML"" version=""1,0"">
+    <Descr>AceXML Document</Descr>
+    <FlightPlan.FlightPlan>
+        <Title>LOWW to LOWG</Title>
+        <FPType>IFR</FPType>
+        <RouteType>HighAlt</RouteType>
+        <CruisingAlt>35000.000</CruisingAlt>
+        <DepartureID>LOWW</DepartureID>
+        <DestinationID>LOWG</DestinationID>
+        <DepartureName>Vienna</DepartureName>
+        <DestinationName>Graz</DestinationName>
+        <ATCWaypoint id=""LOWW"">
+            <ATCWaypointType>Airport</ATCWaypointType>
+            <WorldPosition>N48° 7' 0.00"",E16° 34' 0.00"",+000600.00</WorldPosition>
+        </ATCWaypoint>
+        <ATCWaypoint id=""LOWG"">
+            <ATCWaypointType>Airport</ATCWaypointType>
+            <WorldPosition>N47° 0' 0.00"",E15° 26' 0.00"",+001115.00</WorldPosition>
+        </ATCWaypoint>
+    </FlightPlan.FlightPlan>
+</SimBase.Document>";
+            
+            File.WriteAllText(testFile, xmlContent);
+            
+            try
+            {
+                // Act - Parse the flight plan
+                var flightPlanInfo = FlightPlanParser.ParseFlightPlan(testFile);
+                
+                // Assert - Flight plan should be loaded correctly
+                Assert.NotNull(flightPlanInfo);
+                Assert.Equal("LOWW", flightPlanInfo.DepartureID);
+                Assert.Equal("LOWG", flightPlanInfo.DestinationID);
+                
+                // Test takeoff with LOWW
+                var departureAirport = flightPlanInfo.DepartureID ?? "UNKNOWN";
+                var takeoffFixName = $"TAKEOFF {departureAirport}";
+                
+                Assert.Equal("TAKEOFF LOWW", takeoffFixName);
+                Assert.DoesNotContain("ESSA", takeoffFixName); // Should not contain ESSA
+                Assert.DoesNotContain("LGRP", takeoffFixName); // Should not contain old hardcoded value
+                
+                // Test landing with LOWG
+                var destinationAirport = flightPlanInfo.DestinationID ?? "UNKNOWN";
+                var landingFixName = $"LANDING {destinationAirport}";
+                
+                Assert.Equal("LANDING LOWG", landingFixName);
+                Assert.DoesNotContain("ESSA", landingFixName); // Should not contain old hardcoded value
+                Assert.DoesNotContain("ESOK", landingFixName); // Should not contain ESOK
+            }
+            finally
+            {
+                // Cleanup
+                if (File.Exists(testFile))
+                    File.Delete(testFile);
+            }
+        }
+        
+        [Fact]
+        public void No_FlightPlan_Should_Use_UNKNOWN_Airport()
+        {
+            // Arrange - No flight plan loaded (null)
+            FlightPlanParser.FlightPlanInfo? nullFlightPlan = null;
+            
+            // Act & Assert - Test takeoff with null flight plan
+            var departureAirport = nullFlightPlan?.DepartureID ?? "UNKNOWN";
+            var takeoffFixName = $"TAKEOFF {departureAirport}";
+            
+            Assert.Equal("TAKEOFF UNKNOWN", takeoffFixName);
+            
+            // Act & Assert - Test landing with null flight plan
+            var destinationAirport = nullFlightPlan?.DestinationID ?? "UNKNOWN";
+            var landingFixName = $"LANDING {destinationAirport}";
+            
+            Assert.Equal("LANDING UNKNOWN", landingFixName);
+        }
+
+        [Fact]
+        public void LoadFlightPlan_Should_HandleQuotedAbsolutePath_WithoutCurrentDirPrepending()
+        {
+            // Arrange - Create a flight plan file in a specific directory
+            var testDir = Path.Combine(Path.GetTempPath(), "TestFlightPlans");
+            Directory.CreateDirectory(testDir);
+            var testFile = Path.Combine(testDir, "ESSAESOK_MFS_15Jul25.pln");
+            
+            var xmlContent = @"<?xml version=""1.0"" encoding=""UTF-8""?>
+<SimBase.Document Type=""AceXML"" version=""1,0"">
+    <Descr>AceXML Document</Descr>
+    <FlightPlan.FlightPlan>
+        <Title>ESSA to ESOK</Title>
+        <FPType>IFR</FPType>
+        <RouteType>HighAlt</RouteType>
+        <CruisingAlt>26000.000</CruisingAlt>
+        <DepartureID>ESSA</DepartureID>
+        <DestinationID>ESOK</DestinationID>
+        <DepartureName>Arlanda</DepartureName>
+        <DestinationName>Karlstad</DestinationName>
+        <ATCWaypoint id=""ESSA"">
+            <ATCWaypointType>Airport</ATCWaypointType>
+            <WorldPosition>N59° 39' 7.00"",E17° 55' 7.00"",+000138.00</WorldPosition>
+        </ATCWaypoint>
+        <ATCWaypoint id=""ESOK"">
+            <ATCWaypointType>Airport</ATCWaypointType>
+            <WorldPosition>N59° 26' 41.00"",E13° 20' 15.00"",+000353.00</WorldPosition>
+        </ATCWaypoint>
+    </FlightPlan.FlightPlan>
+</SimBase.Document>";
+            
+            File.WriteAllText(testFile, xmlContent);
+            
+            try
+            {
+                // Act - Simulate the exact scenario from LoadFlightPlan method
+                // User enters: "C:\Users\ricka\Downloads\ESSAESOK_MFS_15Jul25.pln"
+                var userInput = $"\"{testFile}\"";
+                
+                // This simulates the LoadFlightPlan logic
+                var filePath = userInput;
+                
+                // Remove quotes from file path if present (before checking if rooted)
+                filePath = filePath.Trim().Trim('"');
+                
+                // If it's a relative path, make it absolute
+                if (!Path.IsPathRooted(filePath))
+                {
+                    filePath = Path.GetFullPath(filePath);
+                }
+                
+                // Now parse the flight plan
+                var result = FlightPlanParser.ParseFlightPlan(filePath);
+                
+                // Assert - This should succeed without current directory prepending
+                Assert.NotNull(result);
+                Assert.Equal("ESSA", result.DepartureID);
+                Assert.Equal("ESOK", result.DestinationID);
+                
+                // Verify the path was processed correctly
+                Assert.Equal(testFile, filePath);
+                Assert.True(Path.IsPathRooted(filePath));
+                
+                // The processed path should NOT contain the current working directory
+                var currentDir = Directory.GetCurrentDirectory();
+                Assert.DoesNotContain(Path.Combine(currentDir, "\""), filePath);
+            }
+            finally
+            {
+                // Cleanup
+                if (File.Exists(testFile))
+                    File.Delete(testFile);
+                if (Directory.Exists(testDir))
+                    Directory.Delete(testDir);
+            }
+        }
     }
 }

@@ -142,6 +142,9 @@ namespace MsfsOfpLog
                 return;
             }
             
+            // Remove quotes from file path if present (before checking if rooted)
+            filePath = filePath.Trim().Trim('"');
+            
             // If it's a relative path, make it absolute
             if (!Path.IsPathRooted(filePath))
             {
