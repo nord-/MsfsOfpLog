@@ -1,6 +1,4 @@
-using System;
 using System.Runtime.InteropServices;
-using System.Threading;
 using Microsoft.FlightSimulator.SimConnect;
 using MsfsOfpLog.Models;
 

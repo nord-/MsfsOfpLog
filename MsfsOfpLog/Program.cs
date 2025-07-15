@@ -33,7 +33,7 @@ namespace MsfsOfpLog
             Console.CancelKeyPress += (sender, e) =>
             {
                 e.Cancel = true; // Prevent immediate exit
-                Console.WriteLine("\n\nReceived Ctrl+C - stopping monitoring gracefully...");
+                Console.WriteLine("\n\nReceived Ctrl+C - stopping monitoring gracefully…");
                 cancellationTokenSource?.Cancel();
             };
             
@@ -86,7 +86,7 @@ namespace MsfsOfpLog
                         // StartMonitoring now runs continuously until Ctrl+C
                         return;
                     case "4":
-                        await StopMonitoringAndExit();
+                        StopMonitoringAndExit();
                         return;
                     default:
                         Console.WriteLine("Invalid option. Please try again.");
@@ -97,12 +97,12 @@ namespace MsfsOfpLog
         
         private static async Task ConnectToMsfs()
         {
-            Console.WriteLine("Connecting to MSFS...");
+            Console.WriteLine("Connecting to MSFS…");
             Console.WriteLine("Make sure MSFS is running and you're in a flight (not in the main menu).");
             
             if (realSimConnectService?.Connect() == true)
             {
-                Console.WriteLine("Connection initiated. Waiting for MSFS response...");
+                Console.WriteLine("Connection initiated. Waiting for MSFS response…");
                 
                 // Give it some time to connect
                 await Task.Delay(2000);
@@ -171,7 +171,7 @@ namespace MsfsOfpLog
                 Console.WriteLine($"   Ready to monitor your flight from {flightPlanInfo.DepartureName} to {flightPlanInfo.DestinationName}");
                 
                 // Automatically start monitoring
-                Console.WriteLine("\n🚀 Starting monitoring automatically...");
+                Console.WriteLine("\n🚀 Starting monitoring automatically…");
                 await StartMonitoring();
             }
             else
@@ -195,7 +195,7 @@ namespace MsfsOfpLog
                 Console.WriteLine("Consider using navigation databases for automatic coordinate lookup.");
                 
                 // Automatically start monitoring
-                Console.WriteLine("\n🚀 Starting monitoring automatically...");
+                Console.WriteLine("\n🚀 Starting monitoring automatically…");
                 await StartMonitoring();
             }
             else
@@ -206,7 +206,7 @@ namespace MsfsOfpLog
         
         private static async Task StartMonitoring()
         {
-            Console.WriteLine("\nStarting GPS fix monitoring...");
+            Console.WriteLine("\nStarting GPS fix monitoring…");
             Console.WriteLine("The system will now track your position and log when you pass GPS fixes.");
             Console.WriteLine("Position will be updated every 5 seconds. Press Ctrl+C to stop monitoring.");
             Console.WriteLine("Monitoring will automatically stop when aircraft speed drops below 45 knots.\n");
@@ -239,7 +239,7 @@ namespace MsfsOfpLog
                         if (hasBeenAirborne && currentAircraftData.GroundSpeed < 45.0)
                         {
                             Console.WriteLine($"\n🛬 Aircraft has landed and is now taxiing ({currentAircraftData.GroundSpeed.ToString("F0", InvariantCulture)} kts).");
-                            Console.WriteLine("Automatically stopping monitoring (flight completed)...");
+                            Console.WriteLine("Automatically stopping monitoring (flight completed)…");
                             monitoringActive = false;
                         }
                     }
@@ -261,12 +261,12 @@ namespace MsfsOfpLog
             
             // Monitoring loop has ended, shutdown gracefully
             Console.WriteLine("\nMonitoring stopped.");
-            await StopMonitoringAndExit();
+            StopMonitoringAndExit();
         }
         
         private static void StopMonitoring()
         {
-            Console.WriteLine("\nStopping monitoring...");
+            Console.WriteLine("\nStopping monitoring…");
             
             // Save flight summary
             var passedFixes = gpsFixTracker?.GetPassedFixes();
@@ -281,9 +281,9 @@ namespace MsfsOfpLog
             }
         }
         
-        private static async Task StopMonitoringAndExit()
+        private static void StopMonitoringAndExit()
         {
-            Console.WriteLine("Shutting down...");
+            Console.WriteLine("Shutting down…");
             
             // Stop monitoring and save data
             StopMonitoring();
@@ -295,7 +295,8 @@ namespace MsfsOfpLog
             realSimConnectService?.Disconnect();
             
             Console.WriteLine("Goodbye!");
-            await Task.Delay(1000);
+            Console.WriteLine("Press any key to quit…");
+            Console.ReadKey();
         }
         
         private static void OnSimConnectConnected(object? sender, EventArgs e)
@@ -396,7 +397,7 @@ namespace MsfsOfpLog
             }
             else
             {
-                Console.WriteLine("Waiting for aircraft data from MSFS...");
+                Console.WriteLine("Waiting for aircraft data from MSFS…");
             }
             
             Console.WriteLine("────────────────────────────────────────────────────────────────");
