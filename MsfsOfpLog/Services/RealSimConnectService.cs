@@ -77,7 +77,7 @@ namespace MsfsOfpLog.Services
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "INDICATED ALTITUDE", "feet", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "HEADING INDICATOR", "degrees", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "AIRSPEED TRUE", "knots", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
-                    simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "MACH NUMBER", "mach", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                    simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "AIRSPEED MACH", "mach", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "AMBIENT TEMPERATURE", "celsius", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "ENG FUEL FLOW GPH:1", "gallons per hour", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "TITLE", null, SIMCONNECT_DATATYPE.STRING256, 0.0f, SimConnect.SIMCONNECT_UNUSED);
