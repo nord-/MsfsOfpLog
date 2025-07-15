@@ -158,10 +158,83 @@ namespace MsfsOfpLog.Services
                             initialFuelAmount = passedFixes[0].FuelRemaining;
                         }
                         
-                        // Second pass: write the data with correct formatting
-                        for (int i = 0; i < passedFixes.Count; i++)
+                        // Filter out duplicate airport entries
+                        var filteredFixes = new List<GpsFixData>();
+                        var takeoffAirport = "";
+                        var landingAirport = "";
+                        
+                        // First, identify takeoff and landing airports
+                        foreach (var fix in passedFixes)
                         {
-                            var fix = passedFixes[i];
+                            if (fix.FixName.StartsWith("TAKEOFF "))
+                            {
+                                takeoffAirport = fix.FixName.Substring(8);
+                            }
+                            else if (fix.FixName.StartsWith("LANDING "))
+                            {
+                                landingAirport = fix.FixName.Substring(8);
+                            }
+                        }
+                        
+                        // Then filter out duplicate airport entries
+                        foreach (var fix in passedFixes)
+                        {
+                            bool shouldInclude = true;
+                            
+                            // Skip regular airport fixes if they match takeoff/landing airports
+                            if (!fix.FixName.StartsWith("TAKEOFF ") && !fix.FixName.StartsWith("LANDING "))
+                            {
+                                if (fix.FixName == takeoffAirport || fix.FixName == landingAirport)
+                                {
+                                    shouldInclude = false;
+                                }
+                            }
+                            
+                            if (shouldInclude)
+                            {
+                                filteredFixes.Add(fix);
+                            }
+                        }
+                        
+                        // Recalculate distances for filtered fixes
+                        distanceAtFix.Clear();
+                        totalDistance = 0;
+                        
+                        for (int i = 0; i < filteredFixes.Count; i++)
+                        {
+                            var fix = filteredFixes[i];
+                            
+                            if (flightStartTime == null && fix.FixName.StartsWith("TAKEOFF"))
+                            {
+                                flightStartTime = fix.Timestamp;
+                                initialFuelAmount = fix.FuelRemaining;
+                                distanceAtFix.Add(0); // Takeoff is at distance 0
+                            }
+                            else if (i > 0)
+                            {
+                                var prevFix = filteredFixes[i - 1];
+                                var dist = CalculateDistance(prevFix.Latitude, prevFix.Longitude, 
+                                                           fix.Latitude, fix.Longitude);
+                                totalDistance += dist;
+                                distanceAtFix.Add(totalDistance);
+                            }
+                            else
+                            {
+                                distanceAtFix.Add(0);
+                            }
+                        }
+                        
+                        // If no TAKEOFF fix was found, use the first fix as the start time
+                        if (flightStartTime == null && filteredFixes.Count > 0)
+                        {
+                            flightStartTime = filteredFixes[0].Timestamp;
+                            initialFuelAmount = filteredFixes[0].FuelRemaining;
+                        }
+                        
+                        // Second pass: write the data with correct formatting
+                        for (int i = 0; i < filteredFixes.Count; i++)
+                        {
+                            var fix = filteredFixes[i];
                             
                             // Calculate ETO (elapsed time over) in HHMM format
                             var etoTime = "0000";
@@ -264,16 +337,16 @@ namespace MsfsOfpLog.Services
                         }
                         
                         // Add fuel consumption summary at the end
-                        if (passedFixes.Count > 1)
+                        if (filteredFixes.Count > 1)
                         {
                             writer.WriteLine();
                             writer.WriteLine("FUEL CONSUMPTION ANALYSIS:");
                             writer.WriteLine("------------------------------------------------------------------------");
                             
-                            for (int i = 1; i < passedFixes.Count; i++)
+                            for (int i = 1; i < filteredFixes.Count; i++)
                             {
-                                var prevFix = passedFixes[i - 1];
-                                var currentFix = passedFixes[i];
+                                var prevFix = filteredFixes[i - 1];
+                                var currentFix = filteredFixes[i];
                                 
                                 var fuelConsumed = prevFix.FuelRemaining - currentFix.FuelRemaining;
                                 var timeSpan = currentFix.Timestamp - prevFix.Timestamp;
