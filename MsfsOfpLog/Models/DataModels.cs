@@ -1,4 +1,5 @@
 using System;
+using MsfsOfpLog.Services;
 
 namespace MsfsOfpLog.Models
 {
@@ -18,6 +19,28 @@ namespace MsfsOfpLog.Models
         public double OutsideAirTemperature { get; set; } // OAT in Celsius
         public double FuelBurnRate { get; set; } // Fuel flow rate in kg/hr (for calculations)
         public double ActualBurn { get; set; } // ABRN - cumulative fuel consumed since takeoff in kg
+        
+        // Default constructor for backward compatibility
+        public GpsFixData() { }
+        
+        // Constructor that takes aircraft data and creates a GPS fix
+        public GpsFixData(AircraftData aircraftData, DateTime timestamp, string fixName)
+        {
+            Timestamp = timestamp;
+            FixName = fixName;
+            Latitude = aircraftData.Latitude;
+            Longitude = aircraftData.Longitude;
+            FuelRemaining = FuelConverter.GallonsToKgInt(aircraftData.FuelTotalQuantity); // Convert from gallons to kg
+            FuelRemainingPercentage = aircraftData.FuelRemainingPercentage;
+            GroundSpeed = aircraftData.GroundSpeed;
+            Altitude = aircraftData.Altitude;
+            Heading = aircraftData.Heading;
+            TrueAirspeed = aircraftData.TrueAirspeed;
+            MachNumber = aircraftData.MachNumber;
+            OutsideAirTemperature = aircraftData.OutsideAirTemperature;
+            FuelBurnRate = aircraftData.FuelBurnRate;
+            ActualBurn = aircraftData.ActualBurn;
+        }
         
         public override string ToString()
         {
@@ -40,6 +63,12 @@ namespace MsfsOfpLog.Models
         public double FuelBurnRate { get; set; } // Fuel flow rate in kg/hr (for calculations)
         public double ActualBurn { get; set; } // ABRN - cumulative fuel consumed since takeoff in kg
         public string AircraftTitle { get; set; } = string.Empty;
+        
+        /// <summary>
+        /// Calculate fuel remaining percentage based on total quantity and capacity
+        /// </summary>
+        public double FuelRemainingPercentage => FuelTotalCapacity > 0 ? 
+            (FuelTotalQuantity / FuelTotalCapacity) * 100 : 0;
     }
     
     public class GpsFix

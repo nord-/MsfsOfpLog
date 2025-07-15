@@ -332,24 +332,7 @@ namespace MsfsOfpLog
                 
                 // Record takeoff event with airport information
                 var departureAirport = currentFlightPlan?.DepartureID ?? "UNKNOWN";
-                var takeoffData = new GpsFixData
-                {
-                    Timestamp = DateTime.Now,
-                    FixName = $"TAKEOFF {departureAirport}", // Use actual departure airport
-                    Latitude = aircraftData.Latitude,
-                    Longitude = aircraftData.Longitude,
-                    FuelRemaining = FuelConverter.GallonsToKgInt(aircraftData.FuelTotalQuantity), // Convert from gallons to kg
-                    FuelRemainingPercentage = aircraftData.FuelTotalCapacity > 0 ? 
-                        (aircraftData.FuelTotalQuantity / aircraftData.FuelTotalCapacity) * 100 : 0,
-                    GroundSpeed = aircraftData.GroundSpeed,
-                    Altitude = aircraftData.Altitude,
-                    Heading = aircraftData.Heading,
-                    TrueAirspeed = aircraftData.TrueAirspeed,
-                    MachNumber = aircraftData.MachNumber,
-                    OutsideAirTemperature = aircraftData.OutsideAirTemperature,
-                    FuelBurnRate = aircraftData.FuelBurnRate,
-                    ActualBurn = aircraftData.ActualBurn
-                };
+                var takeoffData = new GpsFixData(aircraftData, DateTime.Now, $"TAKEOFF {departureAirport}");
                 
                 gpsFixTracker?.AddPassedFix(takeoffData);
             }
@@ -361,24 +344,7 @@ namespace MsfsOfpLog
                 
                 // Record landing event with airport information
                 var destinationAirport = currentFlightPlan?.DestinationID ?? "UNKNOWN";
-                var landingData = new GpsFixData
-                {
-                    Timestamp = DateTime.Now,
-                    FixName = $"LANDING {destinationAirport}", // Use actual destination airport
-                    Latitude = aircraftData.Latitude,
-                    Longitude = aircraftData.Longitude,
-                    FuelRemaining = FuelConverter.GallonsToKgInt(aircraftData.FuelTotalQuantity), // Convert from gallons to kg
-                    FuelRemainingPercentage = aircraftData.FuelTotalCapacity > 0 ? 
-                        (aircraftData.FuelTotalQuantity / aircraftData.FuelTotalCapacity) * 100 : 0,
-                    GroundSpeed = aircraftData.GroundSpeed,
-                    Altitude = aircraftData.Altitude,
-                    Heading = aircraftData.Heading,
-                    TrueAirspeed = aircraftData.TrueAirspeed,
-                    MachNumber = aircraftData.MachNumber,
-                    OutsideAirTemperature = aircraftData.OutsideAirTemperature,
-                    FuelBurnRate = aircraftData.FuelBurnRate,
-                    ActualBurn = aircraftData.ActualBurn
-                };
+                var landingData = new GpsFixData(aircraftData, DateTime.Now, $"LANDING {destinationAirport}");
                 
                 gpsFixTracker?.AddPassedFix(landingData);
             }

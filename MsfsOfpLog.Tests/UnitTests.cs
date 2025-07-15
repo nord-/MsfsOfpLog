@@ -669,23 +669,7 @@ namespace MsfsOfpLog.Tests
             };
             
             // Act - Create GPS fix data as it would be done in Program.cs
-            var gpsFixData = new GpsFixData
-            {
-                Timestamp = testClock.Now,
-                FixName = "TEST_WAYPOINT",
-                Latitude = aircraftData.Latitude,
-                Longitude = aircraftData.Longitude,
-                FuelRemaining = FuelConverter.GallonsToKgInt(aircraftData.FuelTotalQuantity), // Convert from gallons to kg
-                FuelRemainingPercentage = (aircraftData.FuelTotalQuantity / aircraftData.FuelTotalCapacity) * 100,
-                GroundSpeed = aircraftData.GroundSpeed,
-                Altitude = aircraftData.Altitude,
-                Heading = aircraftData.Heading,
-                TrueAirspeed = aircraftData.TrueAirspeed,
-                MachNumber = aircraftData.MachNumber,
-                OutsideAirTemperature = aircraftData.OutsideAirTemperature,
-                FuelBurnRate = aircraftData.FuelBurnRate,
-                ActualBurn = aircraftData.ActualBurn
-            };
+            var gpsFixData = new GpsFixData(aircraftData, testClock.Now, "TEST_WAYPOINT");
             
             // Add to tracker and save summary
             tracker.AddPassedFix(gpsFixData);

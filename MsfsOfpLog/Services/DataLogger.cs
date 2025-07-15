@@ -216,10 +216,10 @@ namespace MsfsOfpLog.Services
                             
                             // Calculate actual burn (cumulative fuel consumed since takeoff)
                             var actualBurn = initialFuelAmount.HasValue ? (initialFuelAmount.Value - fix.FuelRemaining) : 0;
-                            
+
                             // Convert fuel to tonnes
-                            var fuelTonnes = fix.FuelRemaining / 1000.0;
-                            var actualBurnTonnes = actualBurn / 1000.0;
+                            var fuelTonnes = FuelConverter.KgToTonnesString(fix.FuelRemaining);
+                            var actualBurnTonnes = FuelConverter.KgToTonnesString(actualBurn);
                             
                             // Write fix information in OFP format with reordered columns
                             // all values are right-aligned except for position name and display name
@@ -232,7 +232,7 @@ namespace MsfsOfpLog.Services
                                 flightLevel.ToString("D3", InvariantCulture),
                                 safeMach.ToString("F2", InvariantCulture),
                                 safeOAT.ToString("F0", InvariantCulture),
-                                fuelTonnes.ToString("F1", InvariantCulture)
+                                fuelTonnes
                             };
                             var secondLine = new[]
                             {
@@ -250,7 +250,7 @@ namespace MsfsOfpLog.Services
                                 ((int)remainingDistance).ToString(),
                                 fix.GroundSpeed.ToString("F0", InvariantCulture),
                                 "",
-                                actualBurnTonnes.ToString("F1", InvariantCulture)
+                                actualBurnTonnes
                             };
                             writer.WriteLine(string.Join(" ", firstLine.Select((s, j) => s.PadLeft(columns[j]))));
                             // first column should be left-aligned
@@ -287,8 +287,8 @@ namespace MsfsOfpLog.Services
                                 
                                 writer.WriteLine($"{prevName} → {currentName}:");
                                 writer.WriteLine($"  Time: {timeSpan.TotalMinutes.ToString("F1", InvariantCulture)} minutes");
-                                writer.WriteLine($"  Fuel consumed: {(fuelConsumed/1000).ToString("F1", InvariantCulture)} tonnes");
-                                writer.WriteLine($"  Fuel flow: {((fuelConsumed / timeSpan.TotalHours)/1000).ToString("F1", InvariantCulture)} tonnes/hr");
+                                writer.WriteLine($"  Fuel consumed: {FuelConverter.KgToTonnesString(fuelConsumed)} tonnes");
+                                writer.WriteLine($"  Fuel flow: {(fuelConsumed / timeSpan.TotalHours).ToString("N0", InvariantCulture)} kg/hr");
                                 writer.WriteLine();
                             }
                         }
