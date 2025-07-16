@@ -92,8 +92,9 @@ namespace MsfsOfpLog.Models
         /// </summary>
         public double FuelRemainingPercentage => FuelTotalCapacity > 0 ?
             (FuelTotalQuantity / FuelTotalCapacity) * 100 : 0;
-            
+
         public Position Position => new(Latitude, Longitude);
+        public int FlightLevel => (int)Math.Round(Altitude / 100); // Convert altitude to flight level in hundreds of feet
     }
 
     public record GpsFix

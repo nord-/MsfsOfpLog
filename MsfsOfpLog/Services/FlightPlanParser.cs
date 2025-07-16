@@ -210,8 +210,8 @@ namespace MsfsOfpLog.Services
                 _ => 0.5               // Default tolerance
             };
         }
-        
-        public static void DisplayFlightPlanInfo(FlightPlanInfo info)
+
+        public static Task DisplayFlightPlanInfoAsync(FlightPlanInfo info)
         {
             Console.WriteLine($"\n📋 Flight Plan: {info.Title}");
             Console.WriteLine($"   From: {info.DepartureID} ({info.DepartureName})");
@@ -220,7 +220,7 @@ namespace MsfsOfpLog.Services
             Console.WriteLine($"   Cruising Altitude: {info.CruisingAltitude.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)} ft");
             Console.WriteLine($"   Waypoints: {info.Waypoints.Count}");
             Console.WriteLine();
-            
+
             Console.WriteLine("🛫 Route Waypoints:");
             for (int i = 0; i < info.Waypoints.Count; i++)
             {
@@ -228,6 +228,8 @@ namespace MsfsOfpLog.Services
                 Console.WriteLine($"   {i + 1:D2}. {wp.Name} - {wp.Latitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)}, {wp.Longitude.ToString("F6", System.Globalization.CultureInfo.InvariantCulture)} (±{wp.ToleranceNM.ToString("F1", System.Globalization.CultureInfo.InvariantCulture)} NM)");
             }
             Console.WriteLine();
+            
+            return Task.Delay(TimeSpan.FromSeconds(3));
         }
     }
 }

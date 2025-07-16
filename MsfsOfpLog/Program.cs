@@ -156,7 +156,7 @@ namespace MsfsOfpLog
                 currentFlightPlan = flightPlanInfo;
                 
                 // Display flight plan information
-                FlightPlanParser.DisplayFlightPlanInfo(flightPlanInfo);
+                await FlightPlanParser.DisplayFlightPlanInfoAsync(flightPlanInfo);
                 
                 // Reset current GPS fixes and load the new ones
                 gpsFixTracker?.Reset();
@@ -392,9 +392,8 @@ namespace MsfsOfpLog
                 }
                 
                 Console.WriteLine($"Current Aircraft Position: {systemClock.Now:HH:mm}Z [{flightPhase}]");
-                Console.WriteLine($"  Latitude:  {_currentAircraftData.Latitude.ToDecString(6)}°");
-                Console.WriteLine($"  Longitude: {_currentAircraftData.Longitude.ToDecString(6)}°");
-                Console.WriteLine($"  Altitude:  {_currentAircraftData.Altitude.ToDecString(0)} ft (FL{(_currentAircraftData.AltitudeStandard / 100).ToDecString(0)})");
+                Console.WriteLine($"  Position:  {_currentAircraftData.Position}");
+                Console.WriteLine($"  Altitude:  {_currentAircraftData.Altitude.ToDecString(0)} ft (FL{_currentAircraftData.FlightLevel:000})");
                 Console.WriteLine($"  Speed:     {_currentAircraftData.GroundSpeed.ToDecString(0)} kts (IAS: {_currentAircraftData.TrueAirspeed.ToDecString(0)} kts, M{_currentAircraftData.MachNumber.ToDecString(2)})");
                 Console.WriteLine($"  Heading:   {_currentAircraftData.Heading.ToDecString(0)}°");
                 Console.WriteLine($"  Fuel:      {_currentAircraftData.FuelTotalQuantity.GallonsToTonnesString()} t ({_currentAircraftData.FuelRemainingPercentage.ToDecString(1)}%)");
@@ -419,7 +418,7 @@ namespace MsfsOfpLog
                     string icon = fix.FixName.StartsWith("TAKEOFF") ? "🛫" : 
                                  fix.FixName.StartsWith("LANDING") ? "🛬" : "🎯";
                     string prefix = $"  {icon} ";
-                    Console.WriteLine($"{prefix}{fix.FixName,-12} {fix.Timestamp:HH:mm:ss}Z - {fix.FuelRemaining.ToString("F0", InvariantCulture)} kg ({fix.FuelRemainingPercentage.ToString("F1", InvariantCulture)}%) - {fix.GroundSpeed.ToString("F0", InvariantCulture)} kts");
+                    Console.WriteLine($"{prefix}{fix.FixName,-12} {fix.Timestamp:HHmm} • {fix.FuelRemaining.KgToTonnesString()} t ({fix.FuelRemainingPercentage.ToString("F1", InvariantCulture)}%)");
                 }
             }
             else

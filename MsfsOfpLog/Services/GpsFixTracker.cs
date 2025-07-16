@@ -134,5 +134,5 @@ public struct Position
         Longitude = longitude;
     }
     
-    public override string ToString() => $"{Latitude:F6}, {Longitude:F6}";
+    public override string ToString() => $"{Latitude:F6}°, {Longitude:F6}°";
 }
