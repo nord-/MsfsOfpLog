@@ -109,7 +109,7 @@ namespace MsfsOfpLog.Services
                     // Every column is left-aligned and is separated by a single space
                     var columns = new[] { 14, 9, 4, 4, 4, 3, 4 };
                     var firstHeaderLine = new[] { "", "", "", "FL", "MN", "OAT", "AFOB" };
-                    var secondHeaderLine = new[] { "POSITION", "LAT", "ETO", "DIS", "TAS", "", "" };
+                    var secondHeaderLine = new[] { "POSITION", "LAT", "ET", "DIS", "TAS", "", "" };
                     var thirdHeaderLine = new[] { "IDENT", "LONG", "ATO", "RDIS", "GS", "", "ABRN" };
                     writer.WriteLine(string.Join(" ", firstHeaderLine.Select((s, i) => s.PadRight(columns[i]))));
                     writer.WriteLine(string.Join(" ", secondHeaderLine.Select((s, i) => s.PadRight(columns[i]))));

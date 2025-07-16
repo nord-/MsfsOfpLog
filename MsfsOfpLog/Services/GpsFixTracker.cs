@@ -99,10 +99,7 @@ namespace MsfsOfpLog.Services
             return degrees * Math.PI / 180;
         }
         
-        public IReadOnlyList<GpsFixData> GetPassedFixes()
-        {
-            return _passedFixes.AsReadOnly();
-        }
+        public IReadOnlyList<GpsFixData> GetPassedFixes() => _passedFixes.AsReadOnly();
         
         public void Reset()
         {
@@ -113,6 +110,11 @@ namespace MsfsOfpLog.Services
         
         public void AddPassedFix(GpsFixData fixData)
         {
+            if (_passedFixNames.Contains(fixData.FixName))
+            {
+                Console.WriteLine($"Fix {fixData.FixName} already passed, skipping addition.");
+                return;
+            }
             _passedFixes.Add(fixData);
             _passedFixNames.Add(fixData.FixName);
             Console.WriteLine($"Added manual GPS fix: {fixData.FixName} at {fixData.Timestamp:HH:mm:ss}");

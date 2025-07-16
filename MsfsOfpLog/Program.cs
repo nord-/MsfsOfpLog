@@ -360,7 +360,10 @@ namespace MsfsOfpLog
         private static void DisplayCurrentStatus()
         {
             // Clear the console and redraw everything
-            Console.Clear();
+            try
+            {
+                Console.Clear();
+            } catch {}
             
             // Header
             Console.WriteLine("=== MSFS OFP Log - Flight Monitoring ===");
