@@ -287,7 +287,9 @@ namespace MsfsOfpLog
             }
             else
             {
+                Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.WriteLine("No GPS fixes were passed during this monitoring session.");
+                Console.ResetColor();
             }
         }
         
@@ -302,7 +304,11 @@ namespace MsfsOfpLog
             // Disconnect from MSFS
             realSimConnectService?.Disconnect();
             
-            Console.WriteLine("Goodbye! Press any key to quit…");
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.Write("Goodbye! ");
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("Press any key to quit…");
+            Console.ResetColor();
             Console.ReadKey();
         }
         
