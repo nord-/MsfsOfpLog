@@ -385,14 +385,12 @@ namespace MsfsOfpLog
                 }
                 
                 Console.WriteLine($"Current Aircraft Position: {systemClock.Now:HH:mm}Z [{flightPhase}]");
-                Console.WriteLine($"  Latitude:  {currentAircraftData.Latitude.ToString("F6", InvariantCulture)}°");
-                Console.WriteLine($"  Longitude: {currentAircraftData.Longitude.ToString("F6", InvariantCulture)}°");
-                Console.WriteLine($"  Altitude:  {currentAircraftData.Altitude.ToString("F0", InvariantCulture)} ft");
-                Console.WriteLine($"  Ground Speed: {currentAircraftData.GroundSpeed.ToString("F0", InvariantCulture)} kts");
-                Console.WriteLine($"  Heading:   {currentAircraftData.Heading.ToString("F0", InvariantCulture)}°");
-                var fuelQuantityKg = FuelConverter.GallonsToKg(currentAircraftData.FuelTotalQuantity); // Convert from gallons to kg
-                var fuelCapacityKg = FuelConverter.GallonsToKg(currentAircraftData.FuelTotalCapacity); // Convert from gallons to kg
-                Console.WriteLine($"  Fuel:      {(fuelQuantityKg/1000).ToString("F1", InvariantCulture)} t ({(fuelQuantityKg / fuelCapacityKg * 100).ToString("F1", InvariantCulture)}%)");
+                Console.WriteLine($"  Latitude:  {currentAircraftData.Latitude.ToDecimalString(6)}°");
+                Console.WriteLine($"  Longitude: {currentAircraftData.Longitude.ToDecimalString(6)}°");
+                Console.WriteLine($"  Altitude:  {currentAircraftData.Altitude.ToDecimalString(0)} ft (FL{(currentAircraftData.AltitudeStandard / 100).ToDecimalString(0)})");
+                Console.WriteLine($"  Speed:     {currentAircraftData.GroundSpeed.ToDecimalString(0)} kts (IAS: {currentAircraftData.TrueAirspeed.ToDecimalString(0)} kts, M{currentAircraftData.MachNumber.ToDecimalString(2)})");
+                Console.WriteLine($"  Heading:   {currentAircraftData.Heading.ToDecimalString(0)}°");
+                Console.WriteLine($"  Fuel:      {currentAircraftData.FuelTotalQuantity.GallonsToTonnesString()} t ({currentAircraftData.FuelRemainingPercentage.ToDecimalString(1)}%)");
                 Console.WriteLine($"  Aircraft:  {currentAircraftData.AircraftTitle}");
             }
             else

@@ -3,22 +3,22 @@ using MsfsOfpLog.Services;
 
 namespace MsfsOfpLog.Models
 {
-    public class GpsFixData
+    public record GpsFixData
     {
-        public DateTime Timestamp { get; set; }
-        public string FixName { get; set; } = string.Empty;
-        public double Latitude { get; set; }
-        public double Longitude { get; set; }
-        public double FuelRemaining { get; set; } // in kilograms (will be displayed as tonnes)
-        public double FuelRemainingPercentage { get; set; }
-        public double GroundSpeed { get; set; } // GS
-        public double Altitude { get; set; }
-        public double Heading { get; set; }
-        public double TrueAirspeed { get; set; } // TAS
-        public double MachNumber { get; set; } // MN
-        public double OutsideAirTemperature { get; set; } // OAT in Celsius
-        public double FuelBurnRate { get; set; } // Fuel flow rate in kg/hr (for calculations)
-        public double ActualBurn { get; set; } // ABRN - cumulative fuel consumed since takeoff in kg
+        public DateTime Timestamp { get; init; }
+        public string FixName { get; init; } = string.Empty;
+        public double Latitude { get; init; }
+        public double Longitude { get; init; }
+        public double FuelRemaining { get; init; } // in kilograms (will be displayed as tonnes)
+        public double FuelRemainingPercentage { get; init; }
+        public double GroundSpeed { get; init; } // GS
+        public double Altitude { get; init; }
+        public double Heading { get; init; }
+        public double TrueAirspeed { get; init; } // TAS
+        public double MachNumber { get; init; } // MN
+        public double OutsideAirTemperature { get; init; } // OAT in Celsius
+        public double FuelBurnRate { get; init; } // Fuel flow rate in kg/hr (for calculations)
+        public double ActualBurn { get; init; } // ABRN - cumulative fuel consumed since takeoff in kg
         
         // Default constructor for backward compatibility
         public GpsFixData() { }
@@ -43,37 +43,39 @@ namespace MsfsOfpLog.Models
         }
         
         public override string ToString()
-            => $"{Timestamp:yyyy-MM-dd HH:mm:ss}Z - {FixName} - Fuel: {FuelConverter.KgToTonnesString(FuelRemaining)} t ({FuelRemainingPercentage.ToString("F1", InvariantCulture)}%) - Alt: {Altitude.ToString("F0", InvariantCulture)} ft";
+            => $"{Timestamp:yyyy-MM-dd HH:mm:ss}Z - {FixName} - Fuel: {FuelRemaining.KgToTonnesString()} t ({FuelRemainingPercentage.ToDecimalString(1)}%) - Alt: {Altitude.ToDecimalString(0)} ft";
     }
     
-    public class AircraftData
+    public record AircraftData
     {
-        public double Latitude { get; set; }
-        public double Longitude { get; set; }
-        public double FuelTotalQuantity { get; set; }
-        public double FuelTotalCapacity { get; set; }
-        public double GroundSpeed { get; set; } // GS
-        public double Altitude { get; set; }
-        public double Heading { get; set; }
-        public double TrueAirspeed { get; set; } // TAS
-        public double MachNumber { get; set; } // MN
-        public double OutsideAirTemperature { get; set; } // OAT
-        public double FuelBurnRate { get; set; } // Fuel flow rate in kg/hr (for calculations)
-        public double ActualBurn { get; set; } // ABRN - cumulative fuel consumed since takeoff in kg
-        public string AircraftTitle { get; set; } = string.Empty;
+        public double Latitude { get; init; }
+        public double Longitude { get; init; }
+        public double FuelTotalQuantity { get; init; }
+        public double FuelTotalCapacity { get; init; }
+        public double GroundSpeed { get; init; } // GS
+        public double Altitude { get; init; }
+        public double AltitudeStandard { get; init; }
+        public double Heading { get; init; }
+        public double TrueAirspeed { get; init; } // TAS
+        public double MachNumber { get; init; } // MN
+        public double OutsideAirTemperature { get; init; } // OAT
+        public double FuelBurnRate { get; init; } // Fuel flow rate in kg/hr (for calculations)
+        public double ActualBurn { get; init; } // ABRN - cumulative fuel consumed since takeoff in kg
+        public string AircraftTitle { get; init; } = string.Empty;
         
         /// <summary>
         /// Calculate fuel remaining percentage based on total quantity and capacity
         /// </summary>
         public double FuelRemainingPercentage => FuelTotalCapacity > 0 ? 
             (FuelTotalQuantity / FuelTotalCapacity) * 100 : 0;
+
     }
     
-    public class GpsFix
+    public record GpsFix
     {
-        public string Name { get; set; } = string.Empty;
-        public double Latitude { get; set; }
-        public double Longitude { get; set; }
-        public double ToleranceNM { get; set; } = 0.5; // Default tolerance in nautical miles
+        public string Name { get; init; } = string.Empty;
+        public double Latitude { get; init; }
+        public double Longitude { get; init; }
+        public double ToleranceNM { get; init; } = 0.5; // Default tolerance in nautical miles
     }
 }

@@ -184,7 +184,7 @@ namespace MsfsOfpLog.Tests
             tracker.CheckPosition(aircraftData, true);
             
             // Move to next waypoint
-            testClock.AddMinutes(30);
+            testClock.AddMinutes(30);            
             aircraftData.Latitude = 36.468;
             aircraftData.Longitude = 27.060;
             aircraftData.FuelTotalQuantity = 8700;

@@ -26,8 +26,15 @@ namespace MsfsOfpLog.Services
         /// </summary>
         /// <param name="gallons">Fuel quantity in gallons</param>
         /// <returns>Fuel quantity in kilograms (rounded to nearest integer)</returns>
-        public static int GallonsToKgInt(double gallons) => (int)Math.Round(gallons * KgPerGallon);        
-        
+        public static int GallonsToKgInt(double gallons) => (int)Math.Round(gallons * KgPerGallon);
+
+        /// <summary>
+        /// Convert fuel quantity from gallons to tonnes (formatted string)
+        /// </summary>
+        /// <param name="gallons">Fuel quantity in gallons</param>
+        /// <returns>Formatted string representing fuel quantity in tonnes</returns>
+        public static string GallonsToTonnesString(this double gallons) => GallonsToKg(gallons).KgToTonnesString();
+
         /// <summary>
         /// Convert fuel quantity from kilograms to gallons
         /// </summary>
@@ -47,7 +54,7 @@ namespace MsfsOfpLog.Services
         /// </summary>
         /// <param name="kg">Fuel quantity in kilograms</param>
         /// <returns>Formatted string representing fuel quantity in tonnes</returns>
-        public static string KgToTonnesString(double kg) => (kg / 1000.0).ToString("F1", InvariantCulture);
+        public static string KgToTonnesString(this double kg) => (kg / 1000.0).ToString("F1", InvariantCulture);
 
         /// <summary>
         /// Convert fuel quantity from gallons to tonnes

@@ -36,6 +36,7 @@ namespace MsfsOfpLog.Services
             public double FuelTotalCapacity;
             public double GroundSpeed;
             public double Altitude;
+            public double AltitudeStandard; // Added for calibrated altitude
             public double Heading;
             public double TrueAirspeed;
             public double MachNumber;
@@ -73,8 +74,9 @@ namespace MsfsOfpLog.Services
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "FUEL TOTAL CAPACITY", "gallons", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "GROUND VELOCITY", "knots", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "INDICATED ALTITUDE", "feet", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                    simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "INDICATED ALTITUDE CALIBRATED", "feet", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "HEADING INDICATOR", "degrees", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
-                    simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "AIRSPEED TRUE", "knots", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                    simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "AIRSPEED INDICATED", "knots", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "AIRSPEED MACH", "mach", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "AMBIENT TEMPERATURE", "celsius", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "ENG FUEL FLOW GPH:1", "gallons per hour", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
@@ -156,7 +158,8 @@ namespace MsfsOfpLog.Services
                         {
                             try
                             {
-                                await Task.Delay(1000); // Request data every second
+                                await Task.Delay(TimeSpan.FromSeconds(2)); // Request data every other second
+
                                 if (simConnect != null && isConnected)
                                 {
                                     simConnect.RequestDataOnSimObjectType(DATA_REQUESTS.AIRCRAFT_DATA, DATA_DEFINITIONS.AIRCRAFT_DATA, 0, SIMCONNECT_SIMOBJECT_TYPE.USER);
@@ -231,8 +234,8 @@ namespace MsfsOfpLog.Services
                 
                 // Calculate actual burn
                 var actualBurn = initialFuelAmount.HasValue ? FuelConverter.GallonsToKg(initialFuelAmount.Value - aircraftData.FuelTotalQuantity) : 0;
-                
-                var dataObj = new AircraftData
+               
+               var dataObj = new AircraftData
                 {
                     Latitude = aircraftData.Latitude,
                     Longitude = aircraftData.Longitude,
@@ -240,6 +243,7 @@ namespace MsfsOfpLog.Services
                     FuelTotalCapacity = aircraftData.FuelTotalCapacity,
                     GroundSpeed = aircraftData.GroundSpeed,
                     Altitude = aircraftData.Altitude,
+                    AltitudeStandard = aircraftData.AltitudeStandard, // Use calibrated altitude
                     Heading = aircraftData.Heading,
                     TrueAirspeed = aircraftData.TrueAirspeed,
                     MachNumber = aircraftData.MachNumber,
@@ -247,8 +251,25 @@ namespace MsfsOfpLog.Services
                     FuelBurnRate = FuelConverter.GallonsToKg(aircraftData.FuelBurnRate), // Convert from GPH to kg/hr
                     ActualBurn = actualBurn,
                     AircraftTitle = aircraftData.AircraftTitle
-                };
-                
+                }; 
+                // var dataObj = new AircraftData
+                // {
+                //     Latitude = aircraftData.Latitude,
+                //     Longitude = aircraftData.Longitude,
+                //     FuelTotalQuantity = aircraftData.FuelTotalQuantity,
+                //     FuelTotalCapacity = aircraftData.FuelTotalCapacity,
+                //     GroundSpeed = aircraftData.GroundSpeed,
+                //     Altitude = aircraftData.Altitude,
+                //     AltitudeStandard = aircraftData.AltitudeStandard,
+                //     Heading = aircraftData.Heading,
+                //     TrueAirspeed = aircraftData.TrueAirspeed,
+                //     MachNumber = aircraftData.MachNumber,
+                //     OutsideAirTemperature = aircraftData.OutsideAirTemperature,
+                //     FuelBurnRate = FuelConverter.GallonsToKg(aircraftData.FuelBurnRate), // Convert from GPH to kg/hr
+                //     ActualBurn = actualBurn,
+                //     AircraftTitle = aircraftData.AircraftTitle
+                // };
+
                 DataReceived?.Invoke(this, dataObj);
             }
         }

@@ -291,8 +291,8 @@ namespace MsfsOfpLog.Services
                             var actualBurn = initialFuelAmount.HasValue ? (initialFuelAmount.Value - fix.FuelRemaining) : 0;
 
                             // Convert fuel to tonnes
-                            var fuelTonnes = FuelConverter.KgToTonnesString(fix.FuelRemaining);
-                            var actualBurnTonnes = FuelConverter.KgToTonnesString(actualBurn);
+                            var fuelTonnes = fix.FuelRemaining.KgToTonnesString();
+                            var actualBurnTonnes = actualBurn.KgToTonnesString();
                             
                             // Write fix information in OFP format with reordered columns
                             // all values are right-aligned except for position name and display name
@@ -359,9 +359,9 @@ namespace MsfsOfpLog.Services
                                 if (currentName.StartsWith("LANDING ")) currentName = currentName.Substring(8);
                                 
                                 writer.WriteLine($"{prevName} → {currentName}:");
-                                writer.WriteLine($"  Time: {timeSpan.TotalMinutes.ToString("F1", InvariantCulture)} minutes");
-                                writer.WriteLine($"  Fuel consumed: {FuelConverter.KgToTonnesString(fuelConsumed)} tonnes");
-                                writer.WriteLine($"  Fuel flow: {(fuelConsumed / timeSpan.TotalHours).ToString("N0", InvariantCulture)} kg/hr");
+                                writer.WriteLine($"  Time: {timeSpan.TotalMinutes.ToDecimalString(1)} minutes");
+                                writer.WriteLine($"  Fuel consumed: {fuelConsumed.KgToTonnesString()} tonnes");
+                                writer.WriteLine($"  Fuel flow: {(fuelConsumed / timeSpan.TotalHours).ToDecimalString(0)} kg/hr");
                                 writer.WriteLine();
                             }
                         }
