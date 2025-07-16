@@ -231,7 +231,13 @@ namespace MsfsOfpLog.Services
             {
                 writer.WriteLine();
                 writer.WriteLine("FUEL CONSUMPTION ANALYSIS:");
-                writer.WriteLine("------------------------------------------------------------------------");
+                writer.WriteLine();
+                
+                // Column headers - left-aligned header with right-aligned data
+                // writer.WriteLine("Leg           Time   Fuel   FF (kg/h)");
+                writer.WriteLine("Leg           Time   Fuel  FF\n" +
+                                 "              (mins) (tn)  (kg/h)\n" +
+                                 "-------------+------+-----+-----");
 
                 for (int i = 1; i < filteredFixes.Count; i++)
                 {
@@ -248,11 +254,13 @@ namespace MsfsOfpLog.Services
                     if (currentName.StartsWith(Takeoff)) currentName = currentName.Substring(Takeoff.Length + 1);
                     if (currentName.StartsWith(Landing)) currentName = currentName.Substring(Landing.Length + 1);
 
-                    writer.WriteLine($"{prevName} → {currentName}:");
-                    writer.WriteLine($"  Time: {timeSpan.TotalMinutes.ToDecString(1)} minutes");
-                    writer.WriteLine($"  Fuel consumed: {fuelConsumed.KgToTonnesString()} tonnes");
-                    writer.WriteLine($"  Fuel flow: {(fuelConsumed / timeSpan.TotalHours).ToDecString(0)} kg/hr");
-                    writer.WriteLine();
+                    var legName = $"{prevName} → {currentName}";
+                    var timeMinutes = timeSpan.TotalMinutes.ToDecString(1);
+                    var fuelTonnes = fuelConsumed.KgToTonnesString();
+                    var fuelFlow = (fuelConsumed / timeSpan.TotalHours).ToDecString(0);
+                    
+                    // Format: Leg (left-aligned, 14 chars), Time (right-aligned, 6 chars), Fuel (right-aligned, 5 chars), FF (right-aligned, 5 chars)
+                    writer.WriteLine($"{legName,-13} {timeMinutes,6} {fuelTonnes,5} {fuelFlow,5}");
                 }
             }
         }
