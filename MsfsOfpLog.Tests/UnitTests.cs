@@ -870,5 +870,489 @@ namespace MsfsOfpLog.Tests
             }
             return count;
         }
+        
+        [Fact]
+        public void FlightSimulation_LGRP_to_ESSA_Should_GenerateRealisticFlightSummary()
+        {
+            // Arrange - Create a realistic flight simulation using actual coordinates from the PLN file
+            var testClock = new TestSystemClock(new DateTime(2025, 7, 17, 10, 0, 0, DateTimeKind.Utc));
+            
+            // Create a console output stream
+            var consoleStream = new MemoryStream();
+            var dataLogger = new DataLogger(testClock, consoleStream);
+            
+            // Create flight plan info matching the PLN file
+            var flightPlan = new FlightPlanParser.FlightPlanInfo
+            {
+                DepartureID = "LGRP",
+                DestinationID = "ESSA",
+                DepartureName = "Diagoras",
+                DestinationName = "Arlanda",
+                CruisingAltitude = 38000
+            };
+            
+            // Create realistic flight data based on the actual PLN file coordinates
+            var flightData = CreateRealisticLGRPtoESSAFlight(testClock);
+            
+            // Act - Generate flight summary
+            var exception = Record.Exception(() => 
+                dataLogger.SaveFlightSummary(flightData.AsReadOnly(), "Airbus A320 Neo SAS", flightPlan));
+            
+            // Get the output and display it
+            consoleStream.Position = 0;
+            var output = new StreamReader(consoleStream).ReadToEnd();
+            
+            Console.WriteLine("\n" + new string('=', 60));
+            Console.WriteLine("FLIGHT SUMMARY OUTPUT PREVIEW");
+            Console.WriteLine(new string('=', 60));
+            Console.WriteLine(output);
+            Console.WriteLine(new string('=', 60));
+            Console.WriteLine("END OF FLIGHT SUMMARY");
+            Console.WriteLine(new string('=', 60) + "\n");
+            
+            // Assert
+            Assert.Null(exception);
+            Assert.Equal(21, flightData.Count); // TAKEOFF + 19 waypoints + LANDING
+            
+            // Verify key waypoints are present
+            Assert.Contains(flightData, f => f.FixName == "TAKEOFF LGRP");
+            Assert.Contains(flightData, f => f.FixName == "VANES");
+            Assert.Contains(flightData, f => f.FixName == "ETERU");
+            Assert.Contains(flightData, f => f.FixName == "PENOR");
+            Assert.Contains(flightData, f => f.FixName == "ARMOD");
+            Assert.Contains(flightData, f => f.FixName == "NILUG");
+            Assert.Contains(flightData, f => f.FixName == "LANDING ESSA");
+            
+            // Verify the output contains expected content
+            Assert.Contains("17JUL2025 LGRP-ESSA", output);
+            Assert.Contains("OFP 1 Diagoras-Arlanda", output);
+            Assert.Contains("Aircraft: Airbus A320 Neo SAS", output);
+        }
+        
+        private static List<GpsFixData> CreateRealisticLGRPtoESSAFlight(TestSystemClock testClock)
+        {
+            return new List<GpsFixData>
+            {
+                // TAKEOFF from LGRP (Diagoras Airport, Rhodes)
+                new GpsFixData 
+                { 
+                    Timestamp = testClock.Now, 
+                    FixName = "TAKEOFF LGRP", 
+                    Latitude = 36.405278, 
+                    Longitude = 28.086111, 
+                    FuelRemaining = 8800, 
+                    FuelRemainingPercentage = 91.7, 
+                    GroundSpeed = 85, 
+                    Altitude = 19, 
+                    Heading = 240, 
+                    TrueAirspeed = 90, 
+                    MachNumber = 0.13, 
+                    OutsideAirTemperature = 18, 
+                    FuelBurnRate = 1800, 
+                    ActualBurn = 0,
+                    DistanceFromPrevious = 0
+                },
+                
+                // VANES - First waypoint after departure
+                new GpsFixData 
+                { 
+                    Timestamp = testClock.Now.AddMinutes(8), 
+                    FixName = "VANES", 
+                    Latitude = 36.385000, 
+                    Longitude = 27.731667, 
+                    FuelRemaining = 8750, 
+                    FuelRemainingPercentage = 91.1, 
+                    GroundSpeed = 280, 
+                    Altitude = 11300, 
+                    Heading = 320, 
+                    TrueAirspeed = 290, 
+                    MachNumber = 0.45, 
+                    OutsideAirTemperature = 5, 
+                    FuelBurnRate = 2000, 
+                    ActualBurn = 50,
+                    DistanceFromPrevious = 18
+                },
+                
+                // ETERU - On airway B34
+                new GpsFixData 
+                { 
+                    Timestamp = testClock.Now.AddMinutes(15), 
+                    FixName = "ETERU", 
+                    Latitude = 36.468056, 
+                    Longitude = 27.060000, 
+                    FuelRemaining = 8700, 
+                    FuelRemainingPercentage = 90.6, 
+                    GroundSpeed = 420, 
+                    Altitude = 22800, 
+                    Heading = 315, 
+                    TrueAirspeed = 440, 
+                    MachNumber = 0.65, 
+                    OutsideAirTemperature = -15, 
+                    FuelBurnRate = 1800, 
+                    ActualBurn = 100,
+                    DistanceFromPrevious = 35
+                },
+                
+                // GILOS - Continuing on B34
+                new GpsFixData 
+                { 
+                    Timestamp = testClock.Now.AddMinutes(20), 
+                    FixName = "GILOS", 
+                    Latitude = 36.487500, 
+                    Longitude = 26.900278, 
+                    FuelRemaining = 8650, 
+                    FuelRemainingPercentage = 90.1, 
+                    GroundSpeed = 450, 
+                    Altitude = 25000, 
+                    Heading = 315, 
+                    TrueAirspeed = 480, 
+                    MachNumber = 0.72, 
+                    OutsideAirTemperature = -25, 
+                    FuelBurnRate = 1700, 
+                    ActualBurn = 150,
+                    DistanceFromPrevious = 8
+                },
+                
+                // ADESO - Still on B34
+                new GpsFixData 
+                { 
+                    Timestamp = testClock.Now.AddMinutes(25), 
+                    FixName = "ADESO", 
+                    Latitude = 36.533333, 
+                    Longitude = 26.511111, 
+                    FuelRemaining = 8600, 
+                    FuelRemainingPercentage = 89.6, 
+                    GroundSpeed = 460, 
+                    Altitude = 28600, 
+                    Heading = 315, 
+                    TrueAirspeed = 490, 
+                    MachNumber = 0.75, 
+                    OutsideAirTemperature = -35, 
+                    FuelBurnRate = 1650, 
+                    ActualBurn = 200,
+                    DistanceFromPrevious = 22
+                },
+                
+                // AKINA - Transition to UN133
+                new GpsFixData 
+                { 
+                    Timestamp = testClock.Now.AddMinutes(32), 
+                    FixName = "AKINA", 
+                    Latitude = 36.980278, 
+                    Longitude = 26.248611, 
+                    FuelRemaining = 8550, 
+                    FuelRemainingPercentage = 89.1, 
+                    GroundSpeed = 470, 
+                    Altitude = 33200, 
+                    Heading = 320, 
+                    TrueAirspeed = 500, 
+                    MachNumber = 0.77, 
+                    OutsideAirTemperature = -45, 
+                    FuelBurnRate = 1600, 
+                    ActualBurn = 250,
+                    DistanceFromPrevious = 32
+                },
+                
+                // RIGRO - On UN133
+                new GpsFixData 
+                { 
+                    Timestamp = testClock.Now.AddMinutes(40), 
+                    FixName = "RIGRO", 
+                    Latitude = 37.590000, 
+                    Longitude = 25.874167, 
+                    FuelRemaining = 8500, 
+                    FuelRemainingPercentage = 88.5, 
+                    GroundSpeed = 480, 
+                    Altitude = 38000, 
+                    Heading = 325, 
+                    TrueAirspeed = 515, 
+                    MachNumber = 0.80, 
+                    OutsideAirTemperature = -55, 
+                    FuelBurnRate = 1550, 
+                    ActualBurn = 300,
+                    DistanceFromPrevious = 42
+                },
+                
+                // KOROS - Continuing UN133
+                new GpsFixData 
+                { 
+                    Timestamp = testClock.Now.AddMinutes(60), 
+                    FixName = "KOROS", 
+                    Latitude = 39.099722, 
+                    Longitude = 24.915833, 
+                    FuelRemaining = 8400, 
+                    FuelRemainingPercentage = 87.5, 
+                    GroundSpeed = 485, 
+                    Altitude = 38000, 
+                    Heading = 330, 
+                    TrueAirspeed = 520, 
+                    MachNumber = 0.81, 
+                    OutsideAirTemperature = -56, 
+                    FuelBurnRate = 1550, 
+                    ActualBurn = 400,
+                    DistanceFromPrevious = 95
+                },
+                
+                // GIKAS - Still on UN133
+                new GpsFixData 
+                { 
+                    Timestamp = testClock.Now.AddMinutes(70), 
+                    FixName = "GIKAS", 
+                    Latitude = 39.499722, 
+                    Longitude = 24.666944, 
+                    FuelRemaining = 8350, 
+                    FuelRemainingPercentage = 86.9, 
+                    GroundSpeed = 485, 
+                    Altitude = 38000, 
+                    Heading = 335, 
+                    TrueAirspeed = 520, 
+                    MachNumber = 0.81, 
+                    OutsideAirTemperature = -56, 
+                    FuelBurnRate = 1550, 
+                    ActualBurn = 450,
+                    DistanceFromPrevious = 30
+                },
+                
+                // PEREN - Continuing UN133
+                new GpsFixData 
+                { 
+                    Timestamp = testClock.Now.AddMinutes(85), 
+                    FixName = "PEREN", 
+                    Latitude = 40.596667, 
+                    Longitude = 23.967778, 
+                    FuelRemaining = 8280, 
+                    FuelRemainingPercentage = 86.3, 
+                    GroundSpeed = 485, 
+                    Altitude = 38000, 
+                    Heading = 340, 
+                    TrueAirspeed = 520, 
+                    MachNumber = 0.81, 
+                    OutsideAirTemperature = -56, 
+                    FuelBurnRate = 1550, 
+                    ActualBurn = 520,
+                    DistanceFromPrevious = 80
+                },
+                
+                // REFUS - Still on UN133
+                new GpsFixData 
+                { 
+                    Timestamp = testClock.Now.AddMinutes(95), 
+                    FixName = "REFUS", 
+                    Latitude = 41.276389, 
+                    Longitude = 23.805000, 
+                    FuelRemaining = 8220, 
+                    FuelRemainingPercentage = 85.6, 
+                    GroundSpeed = 485, 
+                    Altitude = 38000, 
+                    Heading = 345, 
+                    TrueAirspeed = 520, 
+                    MachNumber = 0.81, 
+                    OutsideAirTemperature = -56, 
+                    FuelBurnRate = 1550, 
+                    ActualBurn = 580,
+                    DistanceFromPrevious = 50
+                },
+                
+                // ATFIR - Last waypoint on UN133
+                new GpsFixData 
+                { 
+                    Timestamp = testClock.Now.AddMinutes(100), 
+                    FixName = "ATFIR", 
+                    Latitude = 41.401667, 
+                    Longitude = 23.774722, 
+                    FuelRemaining = 8200, 
+                    FuelRemainingPercentage = 85.4, 
+                    GroundSpeed = 485, 
+                    Altitude = 38000, 
+                    Heading = 345, 
+                    TrueAirspeed = 520, 
+                    MachNumber = 0.81, 
+                    OutsideAirTemperature = -56, 
+                    FuelBurnRate = 1550, 
+                    ActualBurn = 600,
+                    DistanceFromPrevious = 9
+                },
+                
+                // LOMOS - Direct routing
+                new GpsFixData 
+                { 
+                    Timestamp = testClock.Now.AddMinutes(120), 
+                    FixName = "LOMOS", 
+                    Latitude = 43.833333, 
+                    Longitude = 23.250000, 
+                    FuelRemaining = 8100, 
+                    FuelRemainingPercentage = 84.4, 
+                    GroundSpeed = 485, 
+                    Altitude = 38000, 
+                    Heading = 350, 
+                    TrueAirspeed = 520, 
+                    MachNumber = 0.81, 
+                    OutsideAirTemperature = -56, 
+                    FuelBurnRate = 1550, 
+                    ActualBurn = 700,
+                    DistanceFromPrevious = 177
+                },
+                
+                // NARKA - Over Hungary
+                new GpsFixData 
+                { 
+                    Timestamp = testClock.Now.AddMinutes(150), 
+                    FixName = "NARKA", 
+                    Latitude = 47.248333, 
+                    Longitude = 21.860000, 
+                    FuelRemaining = 7950, 
+                    FuelRemainingPercentage = 82.8, 
+                    GroundSpeed = 485, 
+                    Altitude = 38000, 
+                    Heading = 355, 
+                    TrueAirspeed = 520, 
+                    MachNumber = 0.81, 
+                    OutsideAirTemperature = -56, 
+                    FuelBurnRate = 1550, 
+                    ActualBurn = 850,
+                    DistanceFromPrevious = 250
+                },
+                
+                // KEKED - Slovakia
+                new GpsFixData 
+                { 
+                    Timestamp = testClock.Now.AddMinutes(165), 
+                    FixName = "KEKED", 
+                    Latitude = 48.523056, 
+                    Longitude = 21.291389, 
+                    FuelRemaining = 7850, 
+                    FuelRemainingPercentage = 81.8, 
+                    GroundSpeed = 485, 
+                    Altitude = 38000, 
+                    Heading = 005, 
+                    TrueAirspeed = 520, 
+                    MachNumber = 0.81, 
+                    OutsideAirTemperature = -56, 
+                    FuelBurnRate = 1550, 
+                    ActualBurn = 950,
+                    DistanceFromPrevious = 95
+                },
+                
+                // LENOV - Slovakia
+                new GpsFixData 
+                { 
+                    Timestamp = testClock.Now.AddMinutes(180), 
+                    FixName = "LENOV", 
+                    Latitude = 49.336389, 
+                    Longitude = 21.010278, 
+                    FuelRemaining = 7750, 
+                    FuelRemainingPercentage = 80.7, 
+                    GroundSpeed = 485, 
+                    Altitude = 38000, 
+                    Heading = 010, 
+                    TrueAirspeed = 520, 
+                    MachNumber = 0.81, 
+                    OutsideAirTemperature = -56, 
+                    FuelBurnRate = 1550, 
+                    ActualBurn = 1050,
+                    DistanceFromPrevious = 65
+                },
+                
+                // PENOR - Over southern Sweden
+                new GpsFixData 
+                { 
+                    Timestamp = testClock.Now.AddMinutes(240), 
+                    FixName = "PENOR", 
+                    Latitude = 55.638611, 
+                    Longitude = 17.161389, 
+                    FuelRemaining = 7500, 
+                    FuelRemainingPercentage = 78.1, 
+                    GroundSpeed = 485, 
+                    Altitude = 38000, 
+                    Heading = 025, 
+                    TrueAirspeed = 520, 
+                    MachNumber = 0.81, 
+                    OutsideAirTemperature = -56, 
+                    FuelBurnRate = 1550, 
+                    ActualBurn = 1300,
+                    DistanceFromPrevious = 455
+                },
+                
+                // ARMOD - Approaching Stockholm area
+                new GpsFixData 
+                { 
+                    Timestamp = testClock.Now.AddMinutes(265), 
+                    FixName = "ARMOD", 
+                    Latitude = 57.500833, 
+                    Longitude = 17.346111, 
+                    FuelRemaining = 7400, 
+                    FuelRemainingPercentage = 77.1, 
+                    GroundSpeed = 485, 
+                    Altitude = 38000, 
+                    Heading = 030, 
+                    TrueAirspeed = 520, 
+                    MachNumber = 0.81, 
+                    OutsideAirTemperature = -56, 
+                    FuelBurnRate = 1550, 
+                    ActualBurn = 1400,
+                    DistanceFromPrevious = 130
+                },
+                
+                // NILUG - Beginning descent on Z228
+                new GpsFixData 
+                { 
+                    Timestamp = testClock.Now.AddMinutes(285), 
+                    FixName = "NILUG", 
+                    Latitude = 58.815833, 
+                    Longitude = 17.884722, 
+                    FuelRemaining = 7350, 
+                    FuelRemainingPercentage = 76.6, 
+                    GroundSpeed = 450, 
+                    Altitude = 15800, 
+                    Heading = 035, 
+                    TrueAirspeed = 480, 
+                    MachNumber = 0.75, 
+                    OutsideAirTemperature = -25, 
+                    FuelBurnRate = 1700, 
+                    ActualBurn = 1450,
+                    DistanceFromPrevious = 105
+                },
+                
+                // ESSA - Final waypoint (Stockholm Arlanda)
+                new GpsFixData 
+                { 
+                    Timestamp = testClock.Now.AddMinutes(295), 
+                    FixName = "ESSA", 
+                    Latitude = 59.651944, 
+                    Longitude = 17.918611, 
+                    FuelRemaining = 7320, 
+                    FuelRemainingPercentage = 76.3, 
+                    GroundSpeed = 250, 
+                    Altitude = 2000, 
+                    Heading = 060, 
+                    TrueAirspeed = 270, 
+                    MachNumber = 0.40, 
+                    OutsideAirTemperature = 5, 
+                    FuelBurnRate = 1200, 
+                    ActualBurn = 1480,
+                    DistanceFromPrevious = 55
+                },
+                
+                // LANDING at ESSA
+                new GpsFixData 
+                { 
+                    Timestamp = testClock.Now.AddMinutes(300), 
+                    FixName = "LANDING ESSA", 
+                    Latitude = 59.651944, 
+                    Longitude = 17.918611, 
+                    FuelRemaining = 7300, 
+                    FuelRemainingPercentage = 76.0, 
+                    GroundSpeed = 50, 
+                    Altitude = 138, 
+                    Heading = 060, 
+                    TrueAirspeed = 55, 
+                    MachNumber = 0.08, 
+                    OutsideAirTemperature = 10, 
+                    FuelBurnRate = 500, 
+                    ActualBurn = 1500,
+                    DistanceFromPrevious = 0
+                }
+            };
+        }
     }
 }
