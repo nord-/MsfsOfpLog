@@ -415,13 +415,12 @@ namespace MsfsOfpLog
                 for (int i = 0; i < passedFixes.Count; i++)
                 {
                     var fix = passedFixes[i];
-                    // Highlight the most recent fix and use special icons for takeoff/landing
+                    // Use special icons for takeoff/landing
                     string icon = fix.FixName.StartsWith("TAKEOFF") ? "🛫" : 
                                  fix.FixName.StartsWith("LANDING") ? "🛬" : "🎯";
-                    string prefix = i == passedFixes.Count - 1 ? $"  {icon}*" : $"  {icon} ";
+                    string prefix = $"  {icon} ";
                     Console.WriteLine($"{prefix}{fix.FixName,-12} {fix.Timestamp:HH:mm:ss}Z - {fix.FuelRemaining.ToString("F0", InvariantCulture)} kg ({fix.FuelRemainingPercentage.ToString("F1", InvariantCulture)}%) - {fix.GroundSpeed.ToString("F0", InvariantCulture)} kts");
                 }
-                Console.WriteLine("    (* = most recent)");
             }
             else
             {
