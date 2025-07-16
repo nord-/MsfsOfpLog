@@ -7,5 +7,5 @@ public static class DoubleToString
     /// <param name="value">The double value to convert.</param>
     /// <param name="decimalPlaces">The number of decimal places to include in the string.</param>
     /// <returns>A string representation of the double value with the specified number of decimal places.</returns>
-    public static string ToDecimalString(this double value, int decimalPlaces) => value.ToString($"F{decimalPlaces}", InvariantCulture);
+    public static string ToDecString(this double value, int decimalPlaces) => value.ToString($"F{decimalPlaces}", InvariantCulture);
 }

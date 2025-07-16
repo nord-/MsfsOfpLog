@@ -19,6 +19,9 @@ namespace MsfsOfpLog.Models
         public double OutsideAirTemperature { get; init; } // OAT in Celsius
         public double FuelBurnRate { get; init; } // Fuel flow rate in kg/hr (for calculations)
         public double ActualBurn { get; init; } // ABRN - cumulative fuel consumed since takeoff in kg
+        public int DistanceFromPrevious { get; set; }
+
+        public int FlightLevel => (int)Math.Round(Altitude / 100); // Convert altitude to flight level in hundreds of feet
         
         // Default constructor for backward compatibility
         public GpsFixData() { }
@@ -43,9 +46,30 @@ namespace MsfsOfpLog.Models
         }
         
         public override string ToString()
-            => $"{Timestamp:yyyy-MM-dd HH:mm:ss}Z - {FixName} - Fuel: {FuelRemaining.KgToTonnesString()} t ({FuelRemainingPercentage.ToDecimalString(1)}%) - Alt: {Altitude.ToDecimalString(0)} ft";
+            => $"{Timestamp:yyyy-MM-dd HH:mm:ss}Z - {FixName} - Fuel: {FuelRemaining.KgToTonnesString()} t ({FuelRemainingPercentage.ToDecString(1)}%) - Alt: {Altitude.ToDecString(0)} ft";
+        public string LongitudeString
+        {
+            get
+            {
+                var lonDeg = (int)Math.Abs(Longitude);
+                var lonMin = (Math.Abs(Longitude) - lonDeg) * 60;
+                var lonDir = Longitude >= 0 ? "E" : "W";
+                return $"{lonDir}{lonDeg:D3}{lonMin.ToString("F1", InvariantCulture)}";
+
+            }
+        }
+        public string LatitudeString
+        {
+            get
+            {
+                var latDeg = (int)Math.Abs(Latitude);
+                var latMin = (Math.Abs(Latitude) - latDeg) * 60;
+                var latDir = Latitude >= 0 ? "N" : "S";
+                return $"{latDir}{latDeg:D2}{latMin.ToString("F1", InvariantCulture)}";
+            }
+        }
     }
-    
+
     public record AircraftData
     {
         public double Latitude { get; init; }
@@ -62,20 +86,23 @@ namespace MsfsOfpLog.Models
         public double FuelBurnRate { get; init; } // Fuel flow rate in kg/hr (for calculations)
         public double ActualBurn { get; init; } // ABRN - cumulative fuel consumed since takeoff in kg
         public string AircraftTitle { get; init; } = string.Empty;
-        
+
         /// <summary>
         /// Calculate fuel remaining percentage based on total quantity and capacity
         /// </summary>
-        public double FuelRemainingPercentage => FuelTotalCapacity > 0 ? 
+        public double FuelRemainingPercentage => FuelTotalCapacity > 0 ?
             (FuelTotalQuantity / FuelTotalCapacity) * 100 : 0;
-
+            
+        public Position Position => new(Latitude, Longitude);
     }
-    
+
     public record GpsFix
     {
         public string Name { get; init; } = string.Empty;
         public double Latitude { get; init; }
         public double Longitude { get; init; }
         public double ToleranceNM { get; init; } = 0.5; // Default tolerance in nautical miles
+
+        public Position Position => new(Latitude, Longitude);
     }
 }

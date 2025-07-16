@@ -11,24 +11,25 @@ namespace MsfsOfpLog
         private static DataLogger? dataLogger;
         private static CancellationTokenSource? cancellationTokenSource;
         private static string currentAircraftTitle = "";
-        private static AircraftData? currentAircraftData;
-        private static bool hasBeenAirborne = false; // Track if aircraft has been airborne
-        private static bool isCurrentlyAirborne = false; // Track current airborne status
-        private static DateTime? firstAirborneTime = null; // When aircraft first became airborne
-        private static bool takeoffRecorded = false; // Track if takeoff has been recorded
-        private static bool landingRecorded = false; // Track if landing has been recorded
+        private static AircraftData? _currentAircraftData;
+        private static bool _hasBeenAirborne = false; // Track if aircraft has been airborne
+        private static bool _isCurrentlyAirborne = false; // Track current airborne status
+        private static DateTime? _firstAirborneTime = null; // When aircraft first became airborne
+        private static bool _takeoffRecorded = false; // Track if takeoff has been recorded
+        private static bool _landingRecorded = false; // Track if landing has been recorded
         private static ISystemClock systemClock = new SystemClock();
         private static FlightPlanParser.FlightPlanInfo? currentFlightPlan = null; // Store current flight plan
+        private static double _distance;
         
         static async Task Main(string[] args)
         {
             // Set console encoding to UTF-8 for proper emoji display
             Console.OutputEncoding = System.Text.Encoding.UTF8;
-            
+
             Console.WriteLine("Welcome to MSFS OFP Log!");
             Console.WriteLine("This tool will track your GPS fixes and fuel consumption during flight.");
             Console.WriteLine();
-            
+
             // Set up Ctrl+C handler for graceful shutdown
             Console.CancelKeyPress += (sender, e) =>
             {
@@ -36,24 +37,24 @@ namespace MsfsOfpLog
                 Console.WriteLine("\n\nReceived Ctrl+C - stopping monitoring gracefully…");
                 cancellationTokenSource?.Cancel();
             };
-            
+
             Console.WriteLine("🚀 Using REAL MSFS SimConnect");
             Console.WriteLine("Make sure MSFS is running and you're in a flight!");
             Console.WriteLine();
-            
+
             // Initialize services
             realSimConnectService = new RealSimConnectService();
             realSimConnectService.Connected += OnSimConnectConnected;
             realSimConnectService.Disconnected += OnSimConnectDisconnected;
             realSimConnectService.DataReceived += OnDataReceived;
-            
+
             gpsFixTracker = new GpsFixTracker(systemClock);
             dataLogger = new DataLogger(systemClock);
             cancellationTokenSource = new CancellationTokenSource();
-            
+
             // Auto-connect on startup
             await ConnectToMsfs();
-            
+
             // Display menu
             await ShowMainMenu();
         }
@@ -219,48 +220,57 @@ namespace MsfsOfpLog
             bool monitoringActive = true;
             
             // Reset flight state tracking
-            hasBeenAirborne = false;
-            isCurrentlyAirborne = false;
-            firstAirborneTime = null;
-            takeoffRecorded = false;
-            landingRecorded = false;
+            _hasBeenAirborne = false;
+            _isCurrentlyAirborne = false;
+            _firstAirborneTime = null;
+            _takeoffRecorded = false;
+            _landingRecorded = false;
+            Position? previousPosition = null;
             
             // Continuously display updated position every 5 seconds
             while (!cancellationTokenSource?.Token.IsCancellationRequested == true && monitoringActive)
             {
                 try
                 {
-                    if (currentAircraftData != null)
+
+                    if (_currentAircraftData != null)
                     {
+                        if (_isCurrentlyAirborne)
+                        {
+                            // Calculate distance from previous position if available
+                            if (previousPosition != null)
+                            {
+                                _distance += GpsFixTracker.CalculateDistance(previousPosition.Value, _currentAircraftData.Position);
+                            }
+                            previousPosition = _currentAircraftData.Position;                            
+                        }
+
                         // Display the current status (this will clear and redraw everything)
                         DisplayCurrentStatus();
-                        
+
                         // Only stop monitoring if we've been airborne and are now slow (post-flight taxi)
-                        if (hasBeenAirborne && currentAircraftData.GroundSpeed < 45.0)
+                        if (_hasBeenAirborne && _currentAircraftData.GroundSpeed < 45.0)
                         {
-                            Console.WriteLine($"\n🛬 Aircraft has landed and is now taxiing ({currentAircraftData.GroundSpeed.ToString("F0", InvariantCulture)} kts).");
+                            Console.WriteLine($"\n🛬 Aircraft has landed and is now taxiing ({_currentAircraftData.GroundSpeed.ToString("F0", InvariantCulture)} kts).");
                             Console.WriteLine("Automatically stopping monitoring (flight completed)…");
                             monitoringActive = false;
+                            // Calculate distance one last time
+                            if (previousPosition != null)
+                                _distance += GpsFixTracker.CalculateDistance(previousPosition.Value, _currentAircraftData.Position);
                         }
                     }
                     else
                     {
                         DisplayCurrentStatus();
                     }
-                    
+
                     if (monitoringActive)
-                    {
                         await Task.Delay(5000, cancellationTokenSource?.Token ?? CancellationToken.None);
-                    }
                 }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
+                catch (OperationCanceledException) { break; }
             }
             
             // Monitoring loop has ended, shutdown gracefully
-            Console.WriteLine("\nMonitoring stopped.");
             StopMonitoringAndExit();
         }
         
@@ -283,8 +293,6 @@ namespace MsfsOfpLog
         
         private static void StopMonitoringAndExit()
         {
-            Console.WriteLine("Shutting down…");
-            
             // Stop monitoring and save data
             StopMonitoring();
             
@@ -294,67 +302,63 @@ namespace MsfsOfpLog
             // Disconnect from MSFS
             realSimConnectService?.Disconnect();
             
-            Console.WriteLine("Goodbye!");
-            Console.WriteLine("Press any key to quit…");
+            Console.WriteLine("Goodbye! Press any key to quit…");
             Console.ReadKey();
         }
         
-        private static void OnSimConnectConnected(object? sender, EventArgs e)
-        {
-            Console.WriteLine("Successfully connected to MSFS!");
-        }
+        private static void OnSimConnectConnected(object? sender, EventArgs e) => Console.WriteLine("Successfully connected to MSFS!");
         
-        private static void OnSimConnectDisconnected(object? sender, EventArgs e)
-        {
-            Console.WriteLine("Disconnected from MSFS.");
-        }
+        private static void OnSimConnectDisconnected(object? sender, EventArgs e) => Console.WriteLine("Disconnected from MSFS.");
         
         private static void OnDataReceived(object? sender, AircraftData aircraftData)
         {
             // Store current aircraft data
-            currentAircraftData = aircraftData;
+            _currentAircraftData = aircraftData;
             
             // Update current aircraft title
             currentAircraftTitle = aircraftData.AircraftTitle;
             
             // Update flight state tracking in real-time
-            bool wasAirborne = isCurrentlyAirborne;
-            isCurrentlyAirborne = aircraftData.GroundSpeed > 45.0;
-            
+            bool wasAirborne = _isCurrentlyAirborne;
+            _isCurrentlyAirborne = aircraftData.GroundSpeed > 45.0;
+
             // Check if aircraft just became airborne (takeoff)
-            if (!wasAirborne && isCurrentlyAirborne && !takeoffRecorded)
+            if (!wasAirborne && _isCurrentlyAirborne && !_takeoffRecorded)
             {
-                hasBeenAirborne = true;
-                firstAirborneTime = systemClock.Now;
-                takeoffRecorded = true;
-                
+                _hasBeenAirborne = true;
+                _firstAirborneTime = systemClock.Now;
+                _takeoffRecorded = true;
+
+                _distance = 0; // Reset distance for new flight
+
                 // Record takeoff event with airport information
                 var departureAirport = currentFlightPlan?.DepartureID ?? "UNKNOWN";
                 var takeoffData = new GpsFixData(aircraftData, systemClock.Now, $"TAKEOFF {departureAirport}");
-                
+                takeoffData.DistanceFromPrevious = (int)Math.Round(_distance);
+
                 gpsFixTracker?.AddPassedFix(takeoffData);
             }
             
             // Check if aircraft just landed (was airborne, now slow)
-            if (wasAirborne && !isCurrentlyAirborne && hasBeenAirborne && !landingRecorded)
+            if (wasAirborne && !_isCurrentlyAirborne && _hasBeenAirborne && !_landingRecorded)
             {
-                landingRecorded = true;
+                _landingRecorded = true;
                 
                 // Record landing event with airport information
                 var destinationAirport = currentFlightPlan?.DestinationID ?? "UNKNOWN";
                 var landingData = new GpsFixData(aircraftData, systemClock.Now, $"LANDING {destinationAirport}");
+                landingData.DistanceFromPrevious = (int)Math.Round(_distance);
                 
                 gpsFixTracker?.AddPassedFix(landingData);
             }
             
             // If aircraft just became airborne, mark as has been airborne
-            if (!wasAirborne && isCurrentlyAirborne)
-            {
-                hasBeenAirborne = true;
-            }
-            
+            if (!wasAirborne && _isCurrentlyAirborne)
+                _hasBeenAirborne = true;
+
             // Check if we're near any GPS fixes, passing current flight state
-            gpsFixTracker?.CheckPosition(aircraftData, hasBeenAirborne);
+            if (gpsFixTracker?.CheckPosition(aircraftData, _hasBeenAirborne, _distance) is true)
+                _distance = 0; // Reset distance after passing a fix
         }
         
         private static void DisplayCurrentStatus()
@@ -370,31 +374,31 @@ namespace MsfsOfpLog
             Console.WriteLine();
             
             // Current position block
-            if (currentAircraftData != null)
+            if (_currentAircraftData != null)
             {
                 // Determine flight phase
                 string flightPhase = "";
-                if (!hasBeenAirborne && !isCurrentlyAirborne)
+                if (!_hasBeenAirborne && !_isCurrentlyAirborne)
                 {
                     flightPhase = "TAXI (Pre-flight)";
                 }
-                else if (hasBeenAirborne && isCurrentlyAirborne)
+                else if (_hasBeenAirborne && _isCurrentlyAirborne)
                 {
                     flightPhase = "AIRBORNE";
                 }
-                else if (hasBeenAirborne && !isCurrentlyAirborne)
+                else if (_hasBeenAirborne && !_isCurrentlyAirborne)
                 {
                     flightPhase = "TAXI (Post-flight)";
                 }
                 
                 Console.WriteLine($"Current Aircraft Position: {systemClock.Now:HH:mm}Z [{flightPhase}]");
-                Console.WriteLine($"  Latitude:  {currentAircraftData.Latitude.ToDecimalString(6)}°");
-                Console.WriteLine($"  Longitude: {currentAircraftData.Longitude.ToDecimalString(6)}°");
-                Console.WriteLine($"  Altitude:  {currentAircraftData.Altitude.ToDecimalString(0)} ft (FL{(currentAircraftData.AltitudeStandard / 100).ToDecimalString(0)})");
-                Console.WriteLine($"  Speed:     {currentAircraftData.GroundSpeed.ToDecimalString(0)} kts (IAS: {currentAircraftData.TrueAirspeed.ToDecimalString(0)} kts, M{currentAircraftData.MachNumber.ToDecimalString(2)})");
-                Console.WriteLine($"  Heading:   {currentAircraftData.Heading.ToDecimalString(0)}°");
-                Console.WriteLine($"  Fuel:      {currentAircraftData.FuelTotalQuantity.GallonsToTonnesString()} t ({currentAircraftData.FuelRemainingPercentage.ToDecimalString(1)}%)");
-                Console.WriteLine($"  Aircraft:  {currentAircraftData.AircraftTitle}");
+                Console.WriteLine($"  Latitude:  {_currentAircraftData.Latitude.ToDecString(6)}°");
+                Console.WriteLine($"  Longitude: {_currentAircraftData.Longitude.ToDecString(6)}°");
+                Console.WriteLine($"  Altitude:  {_currentAircraftData.Altitude.ToDecString(0)} ft (FL{(_currentAircraftData.AltitudeStandard / 100).ToDecString(0)})");
+                Console.WriteLine($"  Speed:     {_currentAircraftData.GroundSpeed.ToDecString(0)} kts (IAS: {_currentAircraftData.TrueAirspeed.ToDecString(0)} kts, M{_currentAircraftData.MachNumber.ToDecString(2)})");
+                Console.WriteLine($"  Heading:   {_currentAircraftData.Heading.ToDecString(0)}°");
+                Console.WriteLine($"  Fuel:      {_currentAircraftData.FuelTotalQuantity.GallonsToTonnesString()} t ({_currentAircraftData.FuelRemainingPercentage.ToDecString(1)}%)");
+                Console.WriteLine($"  Aircraft:  {_currentAircraftData.AircraftTitle}");
             }
             else
             {

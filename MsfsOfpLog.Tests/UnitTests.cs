@@ -67,7 +67,7 @@ namespace MsfsOfpLog.Tests
             };
             
             // Act
-            tracker.CheckPosition(aircraftData, true);
+            tracker.CheckPosition(aircraftData, true, 0.0);
             
             // Assert
             Assert.True(fixPassed);
@@ -181,7 +181,7 @@ namespace MsfsOfpLog.Tests
                 AircraftTitle = "Test Aircraft"
             };
             
-            tracker.CheckPosition(aircraftData, true);
+            tracker.CheckPosition(aircraftData, true, 0.0);
             
             // Move to next waypoint
             testClock.AddMinutes(30);
@@ -193,7 +193,7 @@ namespace MsfsOfpLog.Tests
                 ActualBurn = 100
             };
             
-            tracker.CheckPosition(aircraftData, true);
+            tracker.CheckPosition(aircraftData, true, 0.0);
             
             // Simulate landing
             testClock.AddMinutes(60);
