@@ -66,8 +66,10 @@ namespace MsfsOfpLog
                 Console.WriteLine("\n=== MSFS OFP Log Menu ===");
                 Console.WriteLine("1. Load route string (starts monitoring automatically)");
                 Console.WriteLine("2. Load MSFS flight plan (.pln) (starts monitoring automatically)");
-                Console.WriteLine("3. Start monitoring (manual start)");
-                Console.WriteLine("4. Stop monitoring");
+                Console.WriteLine("3. Load SimBrief flight plan (starts monitoring automatically)");
+                Console.WriteLine("4. Start monitoring (manual start)");
+                Console.WriteLine("5. Stop monitoring");
+                Console.WriteLine("6. Clear stored SimBrief User ID");
                 Console.Write("Select option: ");
                 
                 var input = Console.ReadLine();
@@ -83,12 +85,19 @@ namespace MsfsOfpLog
                         // LoadFlightPlan now automatically starts monitoring
                         return;
                     case "3":
+                        await LoadSimBriefFlightPlan();
+                        // LoadSimBriefFlightPlan now automatically starts monitoring
+                        return;
+                    case "4":
                         await StartMonitoring();
                         // StartMonitoring now runs continuously until Ctrl+C
                         return;
-                    case "4":
+                    case "5":
                         StopMonitoringAndExit();
                         return;
+                    case "6":
+                        ClearSimBriefUserId();
+                        break;
                     default:
                         Console.WriteLine("Invalid option. Please try again.");
                         break;
@@ -125,6 +134,137 @@ namespace MsfsOfpLog
                 Console.WriteLine("   2. You are in a flight (not in the main menu)");
                 Console.WriteLine("   3. SimConnect is enabled in MSFS settings");
             }
+        }
+        
+        private static void ClearSimBriefUserId()
+        {
+            Console.WriteLine("\nClear SimBrief User ID:");
+            
+            using var simBriefService = new SimBriefService();
+            
+            if (string.IsNullOrEmpty(simBriefService.SimBriefUserId))
+            {
+                Console.WriteLine("No SimBrief User ID is currently stored.");
+            }
+            else
+            {
+                Console.WriteLine($"Current SimBrief User ID: {simBriefService.SimBriefUserId}");
+                Console.Write("Are you sure you want to clear all stored SimBrief data? (y/n): ");
+                
+                if (Console.ReadLine()?.ToLower() == "y")
+                {
+                    simBriefService.ClearStoredData();
+                    Console.WriteLine("✅ All SimBrief data cleared successfully.");
+                }
+                else
+                {
+                    Console.WriteLine("Operation cancelled.");
+                }
+            }
+        }
+        
+        private static async Task LoadSimBriefFlightPlan()
+        {
+            Console.WriteLine("\nLoad SimBrief Flight Plan:");
+            
+            using var simBriefService = new SimBriefService();
+            
+            // Check if we need to configure SimBrief User ID
+            if (string.IsNullOrEmpty(simBriefService.SimBriefUserId))
+            {
+                Console.WriteLine("SimBrief User ID not configured.");
+                Console.WriteLine("\nYou need either:");
+                Console.WriteLine("• Your Navigraph username (from https://navigraph.com/account/settings)");
+                Console.WriteLine("• Your SimBrief Pilot ID (from https://dispatch.simbrief.com/account)");
+                Console.Write("\nEnter your Navigraph username or SimBrief Pilot ID: ");
+                var userId = Console.ReadLine();
+                
+                if (string.IsNullOrWhiteSpace(userId))
+                {
+                    Console.WriteLine("❌ SimBrief User ID is required.");
+                    return;
+                }
+                
+                simBriefService.SimBriefUserId = userId;
+                Console.WriteLine($"✅ SimBrief User ID saved: {userId}");
+            }
+            else
+            {
+                Console.WriteLine($"📋 Using stored SimBrief User ID: {simBriefService.SimBriefUserId}");
+            }
+            
+            // Always get the latest flight plan
+            Console.WriteLine("\n⏳ Fetching latest flight plan from SimBrief...");
+            var flightPlanInfo = await simBriefService.GetLatestFlightPlanAsync();
+            
+            if (flightPlanInfo != null)
+            {
+                // Store the flight plan for use in takeoff/landing recording
+                currentFlightPlan = flightPlanInfo;
+                
+                // Display flight plan information
+                await DisplaySimBriefFlightPlanInfoAsync(flightPlanInfo);
+                
+                // Reset current GPS fixes and load the new ones
+                gpsFixTracker?.Reset();
+                
+                // Add all waypoints from the flight plan
+                foreach (var waypoint in flightPlanInfo.Waypoints)
+                {
+                    gpsFixTracker?.AddGpsFix(waypoint);
+                }
+                
+                Console.WriteLine($"✅ Successfully loaded {flightPlanInfo.Waypoints.Count} waypoints from SimBrief!");
+                Console.WriteLine($"   Route: {flightPlanInfo.DepartureID} → {flightPlanInfo.DestinationID}");
+                Console.WriteLine($"   Ready to monitor your flight from {flightPlanInfo.DepartureName} to {flightPlanInfo.DestinationName}");
+                Console.WriteLine("Press any key to continue (auto-continuing in 20 seconds)…");
+                
+                // Wait for key press with 20 second timeout
+                var keyTask = Task.Run(() => Console.ReadKey());
+                var timeoutTask = Task.Delay(20000);
+                
+                if (await Task.WhenAny(keyTask, timeoutTask) == timeoutTask)
+                {
+                    Console.WriteLine("\nTimeout reached, continuing automatically…");
+                }
+                
+                // Automatically start monitoring
+                Console.WriteLine("\n🚀 Starting monitoring automatically…");
+                await StartMonitoring();
+            }
+            else
+            {
+                Console.WriteLine("❌ Failed to load flight plan from SimBrief.");
+            }
+        }
+        
+        private static async Task DisplaySimBriefFlightPlanInfoAsync(FlightPlanParser.FlightPlanInfo flightPlan)
+        {
+            Console.WriteLine("\n=== SimBrief Flight Plan Loaded ===");
+            Console.WriteLine($"Route: {flightPlan.DepartureID} → {flightPlan.DestinationID}");
+            Console.WriteLine($"Departure: {flightPlan.DepartureName} ({flightPlan.DepartureID})");
+            Console.WriteLine($"Destination: {flightPlan.DestinationName} ({flightPlan.DestinationID})");
+            Console.WriteLine($"Cruise Altitude: FL{(flightPlan.CruisingAltitude / 100):000}");
+            Console.WriteLine($"Total Waypoints: {flightPlan.Waypoints.Count}");
+            
+            if (flightPlan.Waypoints.Count > 0)
+            {
+                Console.WriteLine("\nRoute Preview:");
+                var previewCount = Math.Min(5, flightPlan.Waypoints.Count);
+                for (int i = 0; i < previewCount; i++)
+                {
+                    var wp = flightPlan.Waypoints[i];
+                    Console.WriteLine($"  {i + 1,2}. {wp.Name,-8} ({wp.Latitude:F4}, {wp.Longitude:F4})");
+                }
+                
+                if (flightPlan.Waypoints.Count > 5)
+                {
+                    Console.WriteLine($"  ... and {flightPlan.Waypoints.Count - 5} more waypoints");
+                }
+            }
+            
+            Console.WriteLine();
+            await Task.Delay(1); // Make it async
         }
         
         private static async Task LoadFlightPlan()

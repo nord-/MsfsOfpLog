@@ -1,8 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text;
+using System.Text.Json;
+using System.Threading.Tasks;
 using Xunit;
+using Xunit.Abstractions;
 using MsfsOfpLog.Models;
 using MsfsOfpLog.Services;
 
@@ -10,6 +14,12 @@ namespace MsfsOfpLog.Tests
 {
     public class UnitTests
     {
+        private readonly ITestOutputHelper _output;
+
+        public UnitTests(ITestOutputHelper output)
+        {
+            _output = output;
+        }
         [Fact]
         public void SystemClock_Should_AdvanceTime_Correctly()
         {
@@ -1353,6 +1363,135 @@ namespace MsfsOfpLog.Tests
                     DistanceFromPrevious = 0
                 }
             };
+        }
+
+        [Fact]
+        public async Task SimBrief_Should_ParseJsonFromDebugFile()
+        {
+            // Arrange - Read the actual SimBrief JSON response from the debug file
+            var debugFilePath = "simbrief_debug.json";
+            
+            Assert.True(File.Exists(debugFilePath), $"Debug file not found at: {Path.GetFullPath(debugFilePath)}. Current directory: {Directory.GetCurrentDirectory()}");
+            
+            var jsonContent = await File.ReadAllTextAsync(debugFilePath);
+            _output.WriteLine($"Loaded JSON file from: {Path.GetFullPath(debugFilePath)}");
+            _output.WriteLine($"JSON length: {jsonContent.Length} characters");
+            
+            // Act - Try to deserialize the JSON using our models
+            try
+            {
+                var simBriefData = JsonSerializer.Deserialize<SimBriefOFP>(jsonContent);
+                
+                // Assert - Verify the JSON was parsed correctly
+                Assert.NotNull(simBriefData);
+                _output.WriteLine("✅ JSON deserialization successful!");
+                
+                // Verify general section
+                Assert.NotNull(simBriefData.General);
+                Assert.NotNull(simBriefData.General.InitialAltitude);
+                _output.WriteLine($"   Initial Altitude: {simBriefData.General.InitialAltitude}");
+                
+                // Verify origin airport
+                Assert.NotNull(simBriefData.Origin);
+                Assert.Equal("ESSA", simBriefData.Origin.IcaoCode);
+                Assert.Equal("ARLANDA", simBriefData.Origin.Name);
+                _output.WriteLine($"   Origin: {simBriefData.Origin.IcaoCode} ({simBriefData.Origin.Name})");
+                
+                // Verify destination airport  
+                Assert.NotNull(simBriefData.Destination);
+                Assert.Equal("EKCH", simBriefData.Destination.IcaoCode);
+                Assert.Equal("KASTRUP", simBriefData.Destination.Name);
+                _output.WriteLine($"   Destination: {simBriefData.Destination.IcaoCode} ({simBriefData.Destination.Name})");
+                
+                // Verify navlog (this is the main test!)
+                Assert.NotNull(simBriefData.Navlog);
+                Assert.True(simBriefData.Navlog.Count > 0, "Navlog should contain waypoints");
+                _output.WriteLine($"   Navlog waypoints: {simBriefData.Navlog.Count}");
+                
+                // Verify first waypoint structure
+                var firstWaypoint = simBriefData.Navlog[0];
+                Assert.NotNull(firstWaypoint.Ident);
+                Assert.NotNull(firstWaypoint.PosLat);
+                Assert.NotNull(firstWaypoint.PosLong);
+                _output.WriteLine($"   First waypoint: {firstWaypoint.Ident} at ({firstWaypoint.PosLat}, {firstWaypoint.PosLong})");
+                
+                // Test conversion to FlightPlanInfo
+                var flightPlan = ConvertSimBriefToFlightPlan(simBriefData);
+                Assert.NotNull(flightPlan);
+                Assert.Equal("ESSA", flightPlan.DepartureID);
+                Assert.Equal("EKCH", flightPlan.DestinationID);
+                Assert.True(flightPlan.Waypoints.Count > 0, "Converted flight plan should have waypoints");
+                _output.WriteLine($"   Converted to FlightPlanInfo with {flightPlan.Waypoints.Count} waypoints");
+                
+                // Show first 5 waypoints
+                _output.WriteLine("   First 5 waypoints:");
+                for (int i = 0; i < Math.Min(5, flightPlan.Waypoints.Count); i++)
+                {
+                    var wp = flightPlan.Waypoints[i];
+                    _output.WriteLine($"     {i + 1}. {wp.Name} ({wp.Latitude:F4}, {wp.Longitude:F4})");
+                }
+            }
+            catch (JsonException ex)
+            {
+                _output.WriteLine($"❌ JSON parsing failed: {ex.Message}");
+                _output.WriteLine($"   Path: {ex.Path}");
+                _output.WriteLine($"   Line: {ex.LineNumber}, Position: {ex.BytePositionInLine}");
+                throw;
+            }
+        }
+        
+        // Helper method to test the conversion logic separately
+        private static FlightPlanParser.FlightPlanInfo ConvertSimBriefToFlightPlan(SimBriefOFP ofp)
+        {
+            var result = new FlightPlanParser.FlightPlanInfo
+            {
+                Title = $"{ofp.Origin?.IcaoCode} to {ofp.Destination?.IcaoCode}",
+                DepartureID = ofp.Origin?.IcaoCode ?? "",
+                DestinationID = ofp.Destination?.IcaoCode ?? "",
+                DepartureName = ofp.Origin?.Name ?? "",
+                DestinationName = ofp.Destination?.Name ?? "",
+                FlightPlanType = "IFR",
+                RouteType = "HighAlt",
+                CruisingAltitude = double.TryParse(ofp.General?.InitialAltitude, NumberStyles.Float, CultureInfo.InvariantCulture, out var alt) ? alt : 0
+            };
+            
+            // Add waypoints from navlog
+            if (ofp.Navlog != null)
+            {
+                Console.WriteLine($"Processing {ofp.Navlog.Count} navlog entries...");
+                int successCount = 0;
+                int failCount = 0;
+                
+                foreach (var fix in ofp.Navlog)
+                {
+                    if (!string.IsNullOrEmpty(fix.Ident))
+                    {
+                        bool latParsed = double.TryParse(fix.PosLat, NumberStyles.Float, CultureInfo.InvariantCulture, out var lat);
+                        bool lonParsed = double.TryParse(fix.PosLong, NumberStyles.Float, CultureInfo.InvariantCulture, out var lon);
+                        
+                        if (latParsed && lonParsed)
+                        {
+                            result.Waypoints.Add(new GpsFix
+                            {
+                                Name = fix.Ident,
+                                Latitude = lat,
+                                Longitude = lon,
+                                ToleranceNM = 1.0
+                            });
+                            successCount++;
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Failed to parse coordinates for {fix.Ident}: lat='{fix.PosLat}' ({latParsed}), lon='{fix.PosLong}' ({lonParsed})");
+                            failCount++;
+                        }
+                    }
+                }
+                
+                Console.WriteLine($"Coordinate parsing: {successCount} successful, {failCount} failed");
+            }
+            
+            return result;
         }
     }
 }

@@ -26,4 +26,10 @@
     <ProjectReference Include="..\MsfsOfpLog\MsfsOfpLog.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="simbrief_debug.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
