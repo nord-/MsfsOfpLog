@@ -9,6 +9,7 @@ namespace MsfsOfpLog
         private static RealSimConnectService? realSimConnectService;
         private static GpsFixTracker? gpsFixTracker;
         private static DataLogger? dataLogger;
+        private static AudioService? audioService;
         private static CancellationTokenSource? cancellationTokenSource;
         private static string currentAircraftTitle = "";
         private static AircraftData? _currentAircraftData;
@@ -20,6 +21,13 @@ namespace MsfsOfpLog
         private static ISystemClock systemClock = new SystemClock();
         private static FlightPlanParser.FlightPlanInfo? currentFlightPlan = null; // Store current flight plan
         private static double _distance;
+        private static int _v1Speed = 0; // V1 speed in knots
+        private static int _vrSpeed = 0; // VR (rotate) speed in knots
+        private static bool _hundredKnotsCalloutMade = false; // Track if 100 knots callout has been made
+        private static bool _v1CalloutMade = false; // Track if V1 callout has been made
+        private static bool _vrCalloutMade = false; // Track if VR callout has been made
+        private static bool _positiveRateCalloutMade = false; // Track if positive rate callout has been made
+        private static bool _inTakeoffRoll = false; // Track if we're currently in takeoff roll
         
         static async Task Main(string[] args)
         {
@@ -50,6 +58,7 @@ namespace MsfsOfpLog
 
             gpsFixTracker = new GpsFixTracker(systemClock);
             dataLogger = new DataLogger(systemClock);
+            audioService = new AudioService();
             cancellationTokenSource = new CancellationTokenSource();
 
             // Auto-connect on startup (but continue even if it fails)
@@ -75,6 +84,7 @@ namespace MsfsOfpLog
                 Console.WriteLine("4. Start monitoring (manual start)");
                 Console.WriteLine("5. Stop monitoring");
                 Console.WriteLine("6. Clear stored SimBrief User ID");
+                Console.WriteLine("7. Test audio system");
                 Console.Write("Select option: ");
                 
                 var input = Console.ReadLine();
@@ -94,6 +104,16 @@ namespace MsfsOfpLog
                         // LoadSimBriefFlightPlan now automatically starts monitoring
                         return;
                     case "4":
+                        // For manual start, offer to configure takeoff speeds if not set
+                        if (_v1Speed <= 0 || _vrSpeed <= 0)
+                        {
+                            Console.WriteLine("\nTakeoff speeds not configured.");
+                            Console.Write("Would you like to configure takeoff speeds for audio callouts? (y/n): ");
+                            if (Console.ReadLine()?.ToLower() == "y")
+                            {
+                                GetTakeoffSpeeds();
+                            }
+                        }
                         await StartMonitoring();
                         // StartMonitoring now runs continuously until Ctrl+C
                         return;
@@ -102,6 +122,9 @@ namespace MsfsOfpLog
                         return;
                     case "6":
                         ClearSimBriefUserId();
+                        break;
+                    case "7":
+                        await TestAudioSystem();
                         break;
                     default:
                         Console.WriteLine("Invalid option. Please try again.");
@@ -171,6 +194,116 @@ namespace MsfsOfpLog
             }
         }
         
+        private static void GetTakeoffSpeeds()
+        {
+            Console.WriteLine("\n=== Takeoff Speeds Configuration ===");
+            Console.WriteLine("Enter your takeoff speeds for audio callouts (or press Enter to skip):");
+            
+            // Get V1 speed
+            Console.Write("Enter V1 speed (knots): ");
+            var v1Input = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(v1Input))
+            {
+                Console.WriteLine("⏭️  Skipping takeoff speed configuration - no audio callouts will be played.");
+                _v1Speed = 0;
+                _vrSpeed = 0;
+                return;
+            }
+            
+            if (int.TryParse(v1Input, out var v1) && v1 > 0 && v1 < 400)
+            {
+                _v1Speed = v1;
+            }
+            else
+            {
+                Console.WriteLine("❌ Invalid V1 speed. Skipping takeoff speed configuration.");
+                _v1Speed = 0;
+                _vrSpeed = 0;
+                return;
+            }
+            
+            // Get VR speed
+            Console.Write("Enter VR (rotate) speed (knots): ");
+            var vrInput = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(vrInput))
+            {
+                Console.WriteLine("⏭️  Skipping VR speed - no audio callouts will be played.");
+                _v1Speed = 0;
+                _vrSpeed = 0;
+                return;
+            }
+            
+            if (int.TryParse(vrInput, out var vr) && vr > 0 && vr < 400)
+            {
+                _vrSpeed = vr;
+            }
+            else
+            {
+                Console.WriteLine("❌ Invalid VR speed. Skipping takeoff speed configuration.");
+                _v1Speed = 0;
+                _vrSpeed = 0;
+                return;
+            }
+            
+            // Validate that VR >= V1
+            if (_vrSpeed < _v1Speed)
+            {
+                Console.WriteLine("⚠️  Warning: VR speed should typically be equal to or greater than V1 speed.");
+                Console.Write("Continue anyway? (y/n): ");
+                if (Console.ReadLine()?.ToLower() != "y")
+                {
+                    _v1Speed = 0;
+                    _vrSpeed = 0;
+                    GetTakeoffSpeeds(); // Restart the process
+                    return;
+                }
+            }
+            
+            Console.WriteLine($"✅ Takeoff speeds configured:");
+            Console.WriteLine($"   V1: {_v1Speed} kts");
+            Console.WriteLine($"   VR: {_vrSpeed} kts");
+            Console.WriteLine("   Audio callouts will be played during takeoff roll.");
+        }
+        
+        private static async Task TestAudioSystem()
+        {
+            Console.WriteLine("\n=== Audio System Test ===");
+            
+            if (audioService == null)
+            {
+                Console.WriteLine("❌ Audio service not initialized.");
+                return;
+            }
+            
+            var availableFiles = audioService.GetAvailableAudioFiles().ToList();
+            Console.WriteLine($"📁 Available audio files: {string.Join(", ", availableFiles)}");
+            
+            if (availableFiles.Count == 0)
+            {
+                Console.WriteLine("❌ No audio files found.");
+                return;
+            }
+            
+            Console.WriteLine("\nTesting each audio file:");
+            foreach (var file in availableFiles)
+            {
+                var audioName = Path.GetFileNameWithoutExtension(file);
+                Console.WriteLine($"🔊 Playing: {file}");
+                audioService.PlayAudio(audioName);
+                
+                Console.WriteLine("   Press any key to continue to next audio or 'q' to quit test...");
+                var key = Console.ReadKey(true);
+                if (key.KeyChar == 'q' || key.KeyChar == 'Q')
+                    break;
+                    
+                audioService.StopAudio();
+                await Task.Delay(500); // Small delay between audio files
+            }
+            
+            audioService.StopAudio();
+            Console.WriteLine("✅ Audio test completed.");
+        }
+        
         private static async Task LoadSimBriefFlightPlan()
         {
             Console.WriteLine("\nLoad SimBrief Flight Plan:");
@@ -225,7 +358,11 @@ namespace MsfsOfpLog
                 Console.WriteLine($"✅ Successfully loaded {flightPlanInfo.Waypoints.Count} waypoints from SimBrief!");
                 Console.WriteLine($"   Route: {flightPlanInfo.DepartureID} → {flightPlanInfo.DestinationID}");
                 Console.WriteLine($"   Ready to monitor your flight from {flightPlanInfo.DepartureName} to {flightPlanInfo.DestinationName}");
-                Console.WriteLine("Press any key to continue (auto-continuing in 20 seconds)…");
+                
+                // Get takeoff speeds before continuing
+                GetTakeoffSpeeds();
+                
+                Console.WriteLine("\nPress any key to continue (auto-continuing in 20 seconds)…");
                 
                 // Wait for key press with 20 second timeout
                 var keyTask = Task.Run(() => Console.ReadKey());
@@ -319,6 +456,9 @@ namespace MsfsOfpLog
                 Console.WriteLine($"   Route: {flightPlanInfo.DepartureID} → {flightPlanInfo.DestinationID}");
                 Console.WriteLine($"   Ready to monitor your flight from {flightPlanInfo.DepartureName} to {flightPlanInfo.DestinationName}");
                 
+                // Get takeoff speeds before continuing
+                GetTakeoffSpeeds();
+                
                 // Automatically start monitoring
                 Console.WriteLine("\n🚀 Starting monitoring automatically…");
                 await StartMonitoring();
@@ -342,6 +482,9 @@ namespace MsfsOfpLog
                 Console.WriteLine("✅ Route string loaded successfully!");
                 Console.WriteLine("Note: In this version, GPS coordinates need to be added manually.");
                 Console.WriteLine("Consider using navigation databases for automatic coordinate lookup.");
+                
+                // Get takeoff speeds before continuing
+                GetTakeoffSpeeds();
                 
                 // Automatically start monitoring
                 Console.WriteLine("\n🚀 Starting monitoring automatically…");
@@ -408,9 +551,10 @@ namespace MsfsOfpLog
             _firstAirborneTime = null;
             _takeoffRecorded = false;
             _landingRecorded = false;
+            ResetTakeoffCallouts();
             Position? previousPosition = null;
             
-            // Continuously display updated position every 5 seconds
+            // Continuously display updated position with dynamic polling frequency
             while (!cancellationTokenSource?.Token.IsCancellationRequested == true && monitoringActive)
             {
                 try
@@ -448,7 +592,11 @@ namespace MsfsOfpLog
                     }
 
                     if (monitoringActive)
-                        await Task.Delay(5000, cancellationTokenSource?.Token ?? CancellationToken.None);
+                    {
+                        // Dynamic polling frequency: 500ms during takeoff roll, 5000ms otherwise
+                        int delayMs = _inTakeoffRoll ? 500 : 5000;
+                        await Task.Delay(delayMs, cancellationTokenSource?.Token ?? CancellationToken.None);
+                    }
                 }
                 catch (OperationCanceledException) { break; }
             }
@@ -457,9 +605,82 @@ namespace MsfsOfpLog
             StopMonitoringAndExit();
         }
         
+        private static void HandleTakeoffAudioCallouts(AircraftData aircraftData)
+        {
+            // Only make callouts if speeds are configured and we have audio service
+            if ((_v1Speed <= 0 || _vrSpeed <= 0) || audioService == null)
+                return;
+            
+            var groundSpeed = (int)Math.Round(aircraftData.GroundSpeed);
+            
+            // 100 knots callout
+            if (!_hundredKnotsCalloutMade && groundSpeed >= 100)
+            {
+                _hundredKnotsCalloutMade = true;
+                audioService.PlayAudio("100knots");
+                Console.WriteLine($"🔊 Audio: 100 knots ({groundSpeed} kts)");
+            }
+            
+            // V1 callout
+            if (!_v1CalloutMade && groundSpeed >= _v1Speed)
+            {
+                _v1CalloutMade = true;
+                audioService.PlayAudio("v1");
+                Console.WriteLine($"🔊 Audio: V1 ({groundSpeed} kts)");
+            }
+            
+            // VR callout (only if different from V1 or both are the same but V1 hasn't been called yet)
+            if (!_vrCalloutMade && groundSpeed >= _vrSpeed)
+            {
+                _vrCalloutMade = true;
+                // If V1 and VR are the same speed and V1 hasn't been called, call both
+                if (_vrSpeed == _v1Speed && !_v1CalloutMade)
+                {
+                    _v1CalloutMade = true;
+                    audioService.PlayAudio("v1");
+                    Console.WriteLine($"🔊 Audio: V1 ({groundSpeed} kts)");
+                    // Small delay between callouts
+                    Task.Delay(500).ContinueWith(_ => {
+                        audioService?.PlayAudio("rotate");
+                        Console.WriteLine($"🔊 Audio: Rotate ({groundSpeed} kts)");
+                    });
+                }
+                else
+                {
+                    audioService.PlayAudio("rotate");
+                    Console.WriteLine($"🔊 Audio: Rotate ({groundSpeed} kts)");
+                }
+            }
+            
+            // Positive rate callout: Above 50ft AGL, vertical speed > 500ft/min, and gear still down
+            if (!_positiveRateCalloutMade && 
+                aircraftData.AltitudeAGL > 50 && 
+                aircraftData.VerticalSpeed > 500 && 
+                aircraftData.GearPosition > 0.5) // Gear is down (position > 0.5 means gear is down or partially down)
+            {
+                _positiveRateCalloutMade = true;
+                audioService.PlayAudio("positive_rate");
+                Console.WriteLine($"🔊 Audio: Positive rate ({aircraftData.AltitudeAGL:F0} ft AGL, VS: {aircraftData.VerticalSpeed:F0} fpm)");
+            }
+        }
+        
+        private static void ResetTakeoffCallouts()
+        {
+            _hundredKnotsCalloutMade = false;
+            _v1CalloutMade = false;
+            _vrCalloutMade = false;
+            _positiveRateCalloutMade = false;
+            _inTakeoffRoll = false;
+        }
+        
         private static void StopMonitoring()
         {
             Console.WriteLine("\nStopping monitoring…");
+            
+            // Reset takeoff speeds and callouts for next flight
+            _v1Speed = 0;
+            _vrSpeed = 0;
+            ResetTakeoffCallouts();
             
             // Save flight summary
             var passedFixes = gpsFixTracker?.GetPassedFixes();
@@ -487,6 +708,9 @@ namespace MsfsOfpLog
             // Disconnect from MSFS
             realSimConnectService?.Disconnect();
             
+            // Dispose audio service
+            audioService?.Dispose();
+            
             Console.ForegroundColor = ConsoleColor.Green;
             Console.Write("Goodbye! ");
             Console.ForegroundColor = ConsoleColor.Cyan;
@@ -510,6 +734,24 @@ namespace MsfsOfpLog
             // Update flight state tracking in real-time
             bool wasAirborne = _isCurrentlyAirborne;
             _isCurrentlyAirborne = aircraftData.GroundSpeed > 45.0;
+            
+            // Detect takeoff roll: ground speed > 40 kts but not yet airborne
+            bool wasInTakeoffRoll = _inTakeoffRoll;
+            _inTakeoffRoll = !_isCurrentlyAirborne && !_hasBeenAirborne && aircraftData.GroundSpeed > 40.0;
+            
+            // If we just entered takeoff roll, reset callouts for this takeoff
+            if (!wasInTakeoffRoll && _inTakeoffRoll)
+            {
+                ResetTakeoffCallouts();
+                _inTakeoffRoll = true; // Ensure it's set after reset
+                Console.WriteLine($"🛫 Takeoff roll detected at {aircraftData.GroundSpeed:F0} kts");
+            }
+            
+            // Handle audio callouts during takeoff roll and initial climb
+            if (_inTakeoffRoll || (!_positiveRateCalloutMade && _hasBeenAirborne && _isCurrentlyAirborne))
+            {
+                HandleTakeoffAudioCallouts(aircraftData);
+            }
 
             // Check if aircraft just became airborne (takeoff)
             if (!wasAirborne && _isCurrentlyAirborne && !_takeoffRecorded)
@@ -517,6 +759,7 @@ namespace MsfsOfpLog
                 _hasBeenAirborne = true;
                 _firstAirborneTime = systemClock.Now;
                 _takeoffRecorded = true;
+                _inTakeoffRoll = false; // No longer in takeoff roll once airborne
 
                 _distance = 0; // Reset distance for new flight
 
@@ -526,6 +769,7 @@ namespace MsfsOfpLog
                 takeoffData.DistanceFromPrevious = (int)Math.Round(_distance);
 
                 gpsFixTracker?.AddPassedFix(takeoffData);
+                Console.WriteLine($"✈️ Aircraft airborne at {aircraftData.GroundSpeed:F0} kts");
             }
             
             // Check if aircraft just landed (was airborne, now slow)
@@ -567,7 +811,11 @@ namespace MsfsOfpLog
             {
                 // Determine flight phase
                 string flightPhase = "";
-                if (!_hasBeenAirborne && !_isCurrentlyAirborne)
+                if (_inTakeoffRoll)
+                {
+                    flightPhase = "TAKEOFF ROLL";
+                }
+                else if (!_hasBeenAirborne && !_isCurrentlyAirborne)
                 {
                     flightPhase = "TAXI (Pre-flight)";
                 }
@@ -582,11 +830,25 @@ namespace MsfsOfpLog
                 
                 Console.WriteLine($"Current Aircraft Position: {systemClock.Now:HH:mm}Z [{flightPhase}]");
                 Console.WriteLine($"  Position:  {_currentAircraftData.Position}");
-                Console.WriteLine($"  Altitude:  {_currentAircraftData.Altitude.ToDecString(0)} ft (FL{_currentAircraftData.FlightLevel:000})");
+                Console.WriteLine($"  Altitude:  {_currentAircraftData.Altitude.ToDecString(0)} ft (FL{_currentAircraftData.FlightLevel:000}) | AGL: {_currentAircraftData.AltitudeAGL.ToDecString(0)} ft");
                 Console.WriteLine($"  Speed:     {_currentAircraftData.GroundSpeed.ToDecString(0)} kts (IAS: {_currentAircraftData.TrueAirspeed.ToDecString(0)} kts, M{_currentAircraftData.MachNumber.ToDecString(2)})");
-                Console.WriteLine($"  Heading:   {_currentAircraftData.Heading.ToDecString(0)}°");
+                Console.WriteLine($"  V/S & Hdg: {_currentAircraftData.VerticalSpeed.ToDecString(0)} fpm | {_currentAircraftData.Heading.ToDecString(0)}°");
                 Console.WriteLine($"  Fuel:      {_currentAircraftData.FuelTotalQuantity.GallonsToTonnesString()} t ({_currentAircraftData.FuelRemainingPercentage.ToDecString(1)}%)");
                 Console.WriteLine($"  Aircraft:  {_currentAircraftData.AircraftTitle}");
+                Console.WriteLine($"  Gear:      {(_currentAircraftData.GearPosition > 0.5 ? "DOWN" : "UP")} ({_currentAircraftData.GearPosition.ToDecString(1)})");
+                
+                // Show takeoff speeds and callout status if configured
+                if (_v1Speed > 0 && _vrSpeed > 0)
+                {
+                    var calloutsStatus = new List<string>();
+                    if (_hundredKnotsCalloutMade) calloutsStatus.Add("100kts✓");
+                    if (_v1CalloutMade) calloutsStatus.Add($"V1({_v1Speed})✓");
+                    if (_vrCalloutMade) calloutsStatus.Add($"VR({_vrSpeed})✓");
+                    if (_positiveRateCalloutMade) calloutsStatus.Add("PosRate✓");
+                    
+                    var statusText = calloutsStatus.Count > 0 ? string.Join(" ", calloutsStatus) : "None yet";
+                    Console.WriteLine($"  Callouts:  {statusText}");
+                }
             }
             else
             {

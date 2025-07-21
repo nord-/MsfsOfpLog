@@ -79,6 +79,9 @@ namespace MsfsOfpLog.Models
         public double GroundSpeed { get; init; } // GS
         public double Altitude { get; init; }
         public double AltitudeStandard { get; init; }
+        public double AltitudeAGL { get; init; } // Altitude above ground level
+        public double VerticalSpeed { get; init; } // Vertical speed in feet per minute
+        public double GearPosition { get; init; } // Landing gear position (0 = up, 1 = down)
         public double Heading { get; init; }
         public double TrueAirspeed { get; init; } // TAS
         public double MachNumber { get; init; } // MN

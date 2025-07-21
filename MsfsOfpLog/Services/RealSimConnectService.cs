@@ -39,6 +39,9 @@ namespace MsfsOfpLog.Services
             public double GroundSpeed;
             public double Altitude;
             public double AltitudeStandard; // Added for calibrated altitude
+            public double AltitudeAGL; // Altitude above ground level
+            public double VerticalSpeed; // Vertical speed in feet per minute
+            public double GearPosition; // Landing gear position (0 = up, 1 = down)
             public double Heading;
             public double TrueAirspeed;
             public double MachNumber;
@@ -77,6 +80,9 @@ namespace MsfsOfpLog.Services
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "GROUND VELOCITY", "knots", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "INDICATED ALTITUDE", "feet", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "INDICATED ALTITUDE CALIBRATED", "feet", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                    simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "PLANE ALT ABOVE GROUND", "feet", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                    simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "VERTICAL SPEED", "feet per minute", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                    simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "GEAR POSITION", "position", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "HEADING INDICATOR", "degrees", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "AIRSPEED INDICATED", "knots", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simConnect.AddToDataDefinition(DATA_DEFINITIONS.AIRCRAFT_DATA, "AIRSPEED MACH", "mach", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
@@ -245,6 +251,9 @@ namespace MsfsOfpLog.Services
                     GroundSpeed = aircraftData.GroundSpeed,
                     Altitude = aircraftData.Altitude,
                     AltitudeStandard = aircraftData.AltitudeStandard, // Use calibrated altitude
+                    AltitudeAGL = aircraftData.AltitudeAGL,
+                    VerticalSpeed = aircraftData.VerticalSpeed,
+                    GearPosition = aircraftData.GearPosition,
                     Heading = aircraftData.Heading,
                     TrueAirspeed = aircraftData.TrueAirspeed,
                     MachNumber = aircraftData.MachNumber,

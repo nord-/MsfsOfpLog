@@ -25,4 +25,15 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Audio\v1.wav" />
+    <EmbeddedResource Include="Audio\100knots.wav" />
+    <EmbeddedResource Include="Audio\rotate.wav" />
+    <EmbeddedResource Include="Audio\positive_rate.wav" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Windows.Extensions" Version="9.0.7" />
+  </ItemGroup>
+
 </Project>
