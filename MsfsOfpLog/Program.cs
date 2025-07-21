@@ -27,6 +27,9 @@ namespace MsfsOfpLog
         private static bool _v1CalloutMade = false; // Track if V1 callout has been made
         private static bool _vrCalloutMade = false; // Track if VR callout has been made
         private static bool _positiveRateCalloutMade = false; // Track if positive rate callout has been made
+        private static bool _lightsOffCalloutMade = false; // Track if lights off callout has been made
+        private static bool _lightsOnCalloutMade = false; // Track if lights on callout has been made
+        private static bool _hasBeenAbove10000 = false; // Track if aircraft has been above 10,000 feet
         private static bool _inTakeoffRoll = false; // Track if we're currently in takeoff roll
         
         static async Task Main(string[] args)
@@ -552,6 +555,7 @@ namespace MsfsOfpLog
             _takeoffRecorded = false;
             _landingRecorded = false;
             ResetTakeoffCallouts();
+            ResetLightingCallouts();
             Position? previousPosition = null;
             
             // Continuously display updated position with dynamic polling frequency
@@ -664,6 +668,38 @@ namespace MsfsOfpLog
             }
         }
         
+        private static void HandleLightingCallouts(AircraftData aircraftData)
+        {
+            // Only make callouts if we have audio service
+            if (audioService == null)
+                return;
+            
+            var altitude = aircraftData.Altitude;
+            
+            // Lights off callout when climbing and passing 10,000 feet (first time)
+            if (!_lightsOffCalloutMade && !_hasBeenAbove10000 && altitude > 10000)
+            {
+                _lightsOffCalloutMade = true;
+                _hasBeenAbove10000 = true;
+                audioService.PlayAudio("lights_off");
+                Console.WriteLine($"🔊 Audio: Lights off ({altitude:F0} ft)");
+            }
+            
+            // Track if we've been above 10,000 feet (for descent tracking)
+            if (altitude > 10000)
+            {
+                _hasBeenAbove10000 = true;
+            }
+            
+            // Lights on callout when descending below 10,000 feet (after having been above)
+            if (!_lightsOnCalloutMade && altitude < 10000 && _hasBeenAbove10000)
+            {
+                _lightsOnCalloutMade = true;
+                audioService.PlayAudio("lights_on");
+                Console.WriteLine($"🔊 Audio: Lights on ({altitude:F0} ft)");
+            }
+        }
+        
         private static void ResetTakeoffCallouts()
         {
             _hundredKnotsCalloutMade = false;
@@ -671,6 +707,13 @@ namespace MsfsOfpLog
             _vrCalloutMade = false;
             _positiveRateCalloutMade = false;
             _inTakeoffRoll = false;
+        }
+        
+        private static void ResetLightingCallouts()
+        {
+            _lightsOffCalloutMade = false;
+            _lightsOnCalloutMade = false;
+            _hasBeenAbove10000 = false;
         }
         
         private static void StopMonitoring()
@@ -681,6 +724,7 @@ namespace MsfsOfpLog
             _v1Speed = 0;
             _vrSpeed = 0;
             ResetTakeoffCallouts();
+            ResetLightingCallouts();
             
             // Save flight summary
             var passedFixes = gpsFixTracker?.GetPassedFixes();
@@ -752,6 +796,9 @@ namespace MsfsOfpLog
             {
                 HandleTakeoffAudioCallouts(aircraftData);
             }
+            
+            // Handle lighting callouts throughout the flight
+            HandleLightingCallouts(aircraftData);
 
             // Check if aircraft just became airborne (takeoff)
             if (!wasAirborne && _isCurrentlyAirborne && !_takeoffRecorded)
@@ -848,6 +895,18 @@ namespace MsfsOfpLog
                     
                     var statusText = calloutsStatus.Count > 0 ? string.Join(" ", calloutsStatus) : "None yet";
                     Console.WriteLine($"  Callouts:  {statusText}");
+                }
+                
+                // Show lighting callout status
+                var lightingStatus = new List<string>();
+                if (_lightsOffCalloutMade) lightingStatus.Add("LightsOff✓");
+                if (_lightsOnCalloutMade) lightingStatus.Add("LightsOn✓");
+                if (_hasBeenAbove10000) lightingStatus.Add("Above10k");
+                
+                if (lightingStatus.Count > 0)
+                {
+                    var lightingText = string.Join(" ", lightingStatus);
+                    Console.WriteLine($"  Lighting:  {lightingText}");
                 }
             }
             else

@@ -30,6 +30,8 @@
     <EmbeddedResource Include="Audio\100knots.wav" />
     <EmbeddedResource Include="Audio\rotate.wav" />
     <EmbeddedResource Include="Audio\positive_rate.wav" />
+    <EmbeddedResource Include="Audio\lights_off.wav" />
+    <EmbeddedResource Include="Audio\lights_on.wav" />
   </ItemGroup>
 
   <ItemGroup>
