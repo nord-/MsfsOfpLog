@@ -11,6 +11,8 @@ namespace MsfsOfpLog.Services
         private bool isConnected = false;
         private double? initialFuelAmount = null; // Track initial fuel for actual burn calculation
         
+        public bool IsConnected => isConnected;
+        
         public event EventHandler<AircraftData>? DataReceived;
         public event EventHandler? Connected;
         public event EventHandler? Disconnected;
@@ -126,8 +128,7 @@ namespace MsfsOfpLog.Services
                 Console.WriteLine("\n🔧 Troubleshooting checklist:");
                 Console.WriteLine("   1. Is MSFS running?");
                 Console.WriteLine("   2. Are you in a flight (not main menu)?");
-                Console.WriteLine("   3. Is Developer Mode enabled in MSFS?");
-                Console.WriteLine("   4. Are other SimConnect apps running?");
+                Console.WriteLine("   3. Are other SimConnect apps running?");
                 
                 return false;
             }

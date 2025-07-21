@@ -52,8 +52,13 @@ namespace MsfsOfpLog
             dataLogger = new DataLogger(systemClock);
             cancellationTokenSource = new CancellationTokenSource();
 
-            // Auto-connect on startup
-            await ConnectToMsfs();
+            // Auto-connect on startup (but continue even if it fails)
+            var initialConnection = await ConnectToMsfs();
+            if (!initialConnection)
+            {
+                Console.WriteLine("\n⚠️  SimConnect connection failed, but you can still load flight plans.");
+                Console.WriteLine("   The application will retry connecting when you start monitoring.");
+            }
 
             // Display menu
             await ShowMainMenu();
@@ -105,7 +110,7 @@ namespace MsfsOfpLog
             }
         }
         
-        private static async Task ConnectToMsfs()
+        private static async Task<bool> ConnectToMsfs()
         {
             Console.WriteLine("Connecting to MSFS…");
             Console.WriteLine("Make sure MSFS is running and you're in a flight (not in the main menu).");
@@ -126,6 +131,8 @@ namespace MsfsOfpLog
                         await Task.Delay(100);
                     }
                 });
+                
+                return true;
             }
             else
             {
@@ -133,6 +140,7 @@ namespace MsfsOfpLog
                 Console.WriteLine("   1. MSFS is running");
                 Console.WriteLine("   2. You are in a flight (not in the main menu)");
                 Console.WriteLine("   3. SimConnect is enabled in MSFS settings");
+                return false;
             }
         }
         
@@ -348,6 +356,41 @@ namespace MsfsOfpLog
         private static async Task StartMonitoring()
         {
             Console.WriteLine("\nStarting GPS fix monitoring…");
+            
+            // Ensure SimConnect is connected before starting monitoring
+            bool isConnected = realSimConnectService?.IsConnected ?? false;
+            if (!isConnected)
+            {
+                Console.WriteLine("🔄 SimConnect not connected. Attempting to connect...");
+                
+                // Try to connect with retries every 30 seconds
+                while (!isConnected && !cancellationTokenSource?.Token.IsCancellationRequested == true)
+                {
+                    isConnected = await ConnectToMsfs();
+                    
+                    if (!isConnected)
+                    {
+                        Console.WriteLine("⏳ Connection failed. Retrying in 30 seconds... (Press Ctrl+C to cancel)");
+                        try
+                        {
+                            await Task.Delay(30000, cancellationTokenSource?.Token ?? CancellationToken.None);
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            Console.WriteLine("Connection retry cancelled by user.");
+                            return;
+                        }
+                    }
+                }
+                
+                if (!isConnected)
+                {
+                    Console.WriteLine("❌ Could not establish SimConnect connection. Monitoring cancelled.");
+                    return;
+                }
+            }
+            
+            Console.WriteLine("✅ SimConnect connected successfully!");
             Console.WriteLine("The system will now track your position and log when you pass GPS fixes.");
             Console.WriteLine("Position will be updated every 5 seconds. Press Ctrl+C to stop monitoring.");
             Console.WriteLine("Monitoring will automatically stop when aircraft speed drops below 45 knots.\n");
