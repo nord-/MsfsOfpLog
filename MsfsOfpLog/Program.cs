@@ -615,26 +615,26 @@ namespace MsfsOfpLog
             if ((_v1Speed <= 0 || _vrSpeed <= 0) || audioService == null)
                 return;
             
-            var groundSpeed = (int)Math.Round(aircraftData.GroundSpeed);
+            var indicatedAirspeed = (int)Math.Round(aircraftData.TrueAirspeed); // Using IAS instead of GS
             
             // 100 knots callout
-            if (!_hundredKnotsCalloutMade && groundSpeed >= 100)
+            if (!_hundredKnotsCalloutMade && indicatedAirspeed >= 100)
             {
                 _hundredKnotsCalloutMade = true;
                 audioService.PlayAudio("100knots");
-                Console.WriteLine($"🔊 Audio: 100 knots ({groundSpeed} kts)");
+                Console.WriteLine($"🔊 Audio: 100 knots ({indicatedAirspeed} kts IAS)");
             }
             
             // V1 callout
-            if (!_v1CalloutMade && groundSpeed >= _v1Speed)
+            if (!_v1CalloutMade && indicatedAirspeed >= _v1Speed)
             {
                 _v1CalloutMade = true;
                 audioService.PlayAudio("v1");
-                Console.WriteLine($"🔊 Audio: V1 ({groundSpeed} kts)");
+                Console.WriteLine($"🔊 Audio: V1 ({indicatedAirspeed} kts IAS)");
             }
             
             // VR callout (only if different from V1 or both are the same but V1 hasn't been called yet)
-            if (!_vrCalloutMade && groundSpeed >= _vrSpeed)
+            if (!_vrCalloutMade && indicatedAirspeed >= _vrSpeed)
             {
                 _vrCalloutMade = true;
                 // If V1 and VR are the same speed and V1 hasn't been called, call both
@@ -642,17 +642,17 @@ namespace MsfsOfpLog
                 {
                     _v1CalloutMade = true;
                     audioService.PlayAudio("v1");
-                    Console.WriteLine($"🔊 Audio: V1 ({groundSpeed} kts)");
+                    Console.WriteLine($"🔊 Audio: V1 ({indicatedAirspeed} kts IAS)");
                     // Small delay between callouts
                     Task.Delay(500).ContinueWith(_ => {
                         audioService?.PlayAudio("rotate");
-                        Console.WriteLine($"🔊 Audio: Rotate ({groundSpeed} kts)");
+                        Console.WriteLine($"🔊 Audio: Rotate ({indicatedAirspeed} kts IAS)");
                     });
                 }
                 else
                 {
                     audioService.PlayAudio("rotate");
-                    Console.WriteLine($"🔊 Audio: Rotate ({groundSpeed} kts)");
+                    Console.WriteLine($"🔊 Audio: Rotate ({indicatedAirspeed} kts IAS)");
                 }
             }
             
