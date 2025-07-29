@@ -597,8 +597,8 @@ namespace MsfsOfpLog
 
                     if (monitoringActive)
                     {
-                        // Dynamic polling frequency: 500ms during takeoff roll, 5000ms otherwise
-                        int delayMs = _inTakeoffRoll ? 500 : 5000;
+                        // Dynamic polling frequency: 200ms (5 Hz) during takeoff roll, 5000ms otherwise
+                        int delayMs = _inTakeoffRoll ? 200 : 5000;
                         await Task.Delay(delayMs, cancellationTokenSource?.Token ?? CancellationToken.None);
                     }
                 }
